@@ -156,3 +156,9 @@ i want you to conenct to my github and creat a repo for this
 ### 2026-07-31 16:09:40
 
 just redact the emailand any PII in there i want the prompt log in the project
+
+---
+
+### 2026-07-31 16:16:37
+
+all consisten everythgin shoudl say VTmarinelsno mickey J
