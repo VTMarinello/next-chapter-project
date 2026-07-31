@@ -1,0 +1,8 @@
+# Course lesson PDFs — reference material, not part of this project
+*.pdf
+
+# Consolidated notes from the course lessons, kept local
+PROJECT-GUIDE.md
+
+# macOS
+.DS_Store
