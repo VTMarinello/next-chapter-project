@@ -30,7 +30,7 @@ interview.
 
 - Right: confirm it, add one detail they didn't mention.
 - Partly right: name the part they got, then the gap. Don't paper over it.
-- Wrong or blank: don't just give the answer. Explain it a *different way* than
+- Wrong or blank: don't just give the answer. Explain it a _different way_ than
   `docs/code-notes.md` did — the first explanation evidently didn't land. Then come back to the
   same question later in the session.
 
