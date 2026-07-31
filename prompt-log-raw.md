@@ -126,3 +126,33 @@ I already authenticated github. now we can work on the actual project idea/conce
 ### 2026-07-31 15:00:42
 
 I want you to function as a project manager For the builder agents to do the work for each chunk and I will review, and then do the quizzes.
+
+---
+
+### 2026-07-31 15:50:10
+
+whats the file path command to start my projoect
+
+---
+
+### 2026-07-31 15:51:39
+
+run through th project fo rme really quick. it seems like it has no html interface, there is no fields or forms for the proejct so far. I asusme its basiclaly a temrinal application. currently describe the inputs and outputs that this tool uses and produces.
+
+---
+
+### 2026-07-31 16:00:03
+
+okay but how does it accept inputs. if i just gave you a recipe, with no sense of how many servings it originally makes. and I give you it all as one text blob, how are you doing the math? do we have individual inputs for asomehting llke "add ingredient" and we put in a seprate text field, amount, etc. metrics. then what do we end up at. ? i get it sort of if theres simple multipaction math, because oz cups everything else are fine. you know what i mean?
+
+---
+
+### 2026-07-31 16:06:23
+
+i want you to conenct to my github and creat a repo for this
+
+---
+
+### 2026-07-31 16:09:40
+
+just redact the emailand any PII in there i want the prompt log in the project
