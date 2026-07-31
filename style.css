@@ -1,0 +1,23 @@
+/* Minimal styling for now. The real layout pass is a later chunk. */
+
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 40rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  line-height: 1.5;
+  color: #222222;
+  background-color: #fdfaf5;
+}
+
+h1 {
+  color: #a4432b;
+}
+
+/* Boxed and coloured so it's obvious this line is the JavaScript's doing */
+#connection-status {
+  border: 1px solid #a4432b;
+  border-radius: 4px;
+  padding: 0.75rem;
+  background-color: #ffffff;
+}

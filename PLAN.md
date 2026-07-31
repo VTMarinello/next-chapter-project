@@ -66,7 +66,7 @@ everything before it is groundwork, everything after is making it genuinely usab
 
 | # | Chunk | Status | Commit message | Explained |
 |---|---|---|---|---|
-| 1 | Page skeleton — `index.html`, `style.css`, `script.js` created and correctly linked, with something visible on screen proving all three are connected | not started | `Create page structure` | ☐ |
+| 1 | Page skeleton — `index.html`, `style.css`, `script.js` created and correctly linked, with something visible on screen proving all three are connected | committed | `Create page structure` | ☑ |
 | 2 | Display one hard-coded recipe on the page, built from data in JavaScript rather than typed into the HTML | not started | `Display a recipe` | ☐ |
 | 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | not started | `Scale ingredients by servings` | ☐ |
 | 4 | Readable amounts — turn `0.75` into `¾`, round sensibly, handle amounts that don't divide cleanly | not started | `Show amounts as fractions` | ☐ |
