@@ -835,3 +835,9 @@ One thing. So I added a new screenshot to the docs folder. The layout looks nice
 ### 2026-07-31 22:33:33
 
 The sizing was right, but I added a new HTML  file in the docs folder with an upgraded version of the animation. Use that one instead. Did you change the application I can scale down recipes as well as up??
+
+---
+
+### 2026-07-31 22:36:49
+
+Can you make an entirely new HTML animation based entirely off the first one and changed absolutely nothing about it but you're going to reverse the apples so that I mean I don't know if you think it's too much cause I don't know how to display the initial beginnings of each one if you press scale it backwards does it suddenly just appear with the 12 apples or rubber there are and then reduce it down to one apple and just reverse the animation basically but not reverse it because the spoon thing has to be the same really just reverse the way the apples app what would you do?

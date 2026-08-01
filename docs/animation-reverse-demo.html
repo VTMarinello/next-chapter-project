@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Recipe Scaler — reversible apple animation</title>
+<style>
+  /* ==========================================================
+     Reversible scale animation — demo
+     ----------------------------------------------------------
+     Same artwork as the original. The one thing that changed is
+     HOW the apples are driven.
+
+     Original: keyframe animations. Each press painted the apples
+     on, and the table went back to empty afterwards — so running
+     it backwards meant conjuring ten apples out of nowhere at
+     frame 1, then removing them. A hard cut.
+
+     Here: the table is STATE. A `level` says how many apples are
+     on it, and a CSS transition moves each apple between hidden
+     and shown. A transition animates whatever changed, in
+     whichever direction it changed — so one rule gives both
+     directions, and the animation always starts from what is
+     already on screen. Nothing ever appears from nowhere.
+     ========================================================== */
+
+  :root {
+    --dark: #241c17;
+    --dark-2: #33271f;
+    --on-dark: #f6efe6;
+    --on-dark-2: #b8a99b;
+    --accent: #c4512f;
+    --accent-2: #e0714f;
+    --gold: #edc06a;
+    --step: 55ms;      /* gap between one apple and the next */
+    --dur: 260ms;      /* how long a single apple takes */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 2.5rem 1.25rem;
+    background: radial-gradient(900px 500px at 50% 0%, #2f251e, #1b1512 70%);
+    color: var(--on-dark);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    min-height: 100vh;
+  }
+
+  .wrap { max-width: 46rem; margin: 0 auto; }
+
+  h1 {
+    font-family: Georgia, serif;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem;
+  }
+
+  .sub { margin: 0 0 1.5rem; color: var(--on-dark-2); font-size: 0.9rem; }
+
+  .stage {
+    background: radial-gradient(125% 70% at 50% 102%, var(--dark-2), var(--dark) 72%);
+    border: 1px solid rgba(0,0,0,.5);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 24px 50px -24px rgba(0,0,0,.8);
+  }
+
+  svg { display: block; width: 100%; height: auto; }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .6rem;
+    margin-top: 1.1rem;
+  }
+
+  button {
+    font: inherit;
+    font-size: .9rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(180deg, var(--accent-2), var(--accent));
+    border: 1px solid transparent;
+    border-radius: 10px;
+    padding: .6rem 1.1rem;
+    min-height: 42px;
+    cursor: pointer;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+  }
+  button:hover { filter: brightness(.95); }
+  button:active { transform: translateY(1px); }
+  button.ghost {
+    background: transparent;
+    color: var(--on-dark-2);
+    border-color: rgba(246,239,230,.2);
+    box-shadow: none;
+  }
+
+  .readout {
+    margin-left: auto;
+    font-family: Georgia, serif;
+    font-size: 1.05rem;
+    color: var(--gold);
+  }
+
+  .note {
+    margin-top: 1.5rem;
+    padding: 1rem 1.1rem;
+    background: rgba(246,239,230,.05);
+    border-left: 3px solid var(--gold);
+    border-radius: 0 10px 10px 0;
+    font-size: .87rem;
+    line-height: 1.6;
+    color: var(--on-dark-2);
+  }
+  .note strong { color: var(--on-dark); }
+
+  /* ---------- The apples ----------
+     Hidden is the default. `.on` is the shown state. The
+     transition between them is what you see, in both directions. */
+
+  .pop {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0;
+    transform: scale(0);
+    transition:
+      opacity var(--dur) ease,
+      transform var(--dur) cubic-bezier(.34, 1.56, .64, 1);
+    /* Appearing: first apple first. */
+    transition-delay: calc(var(--i) * var(--step));
+  }
+
+  .pop.on { opacity: 1; transform: scale(1); }
+
+  /* Leaving: reverse the running order, so the table clears in
+     the opposite sequence to the one it filled in. */
+  .going-down .pop {
+    transition-timing-function: ease, cubic-bezier(.5, -.4, .7, .6);
+    transition-delay: calc((9 - var(--i)) * var(--step));
+  }
+
+  /* ---------- Sparkles ----------
+     Only on the way up. Removing things shouldn't sparkle. */
+  .sparkle {
+    transform-box: fill-box;
+    transform-origin: center;
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  .going-up .sparkle {
+    animation: sparkle-flash 420ms ease-out forwards;
+    animation-delay: calc(300ms + var(--i) * 100ms);
+  }
+
+  @keyframes sparkle-flash {
+    0%   { opacity: 0; transform: scale(0)   rotate(0deg); }
+    45%  { opacity: 1; transform: scale(1.3) rotate(60deg); }
+    100% { opacity: 0; transform: scale(0)   rotate(90deg); }
+  }
+
+  /* ---------- Spoon ----------
+     Unchanged from the original: it sweeps the same way whichever
+     direction the apples are going. */
+  .stir {
+    transform-box: fill-box;
+    transform-origin: right center;
+    transform: rotate(25deg);
+  }
+
+  .stirring .stir {
+    animation: spoon-stir 1.1s cubic-bezier(.34, 1.3, .64, 1);
+  }
+
+  @keyframes spoon-stir {
+    0%   { transform: rotate(25deg); }
+    35%  { transform: rotate(-20deg); }
+    70%  { transform: rotate(-4deg); }
+    100% { transform: rotate(25deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pop { transition: none; }
+    .going-up .sparkle, .stirring .stir { animation: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Reversible apple animation</h1>
+  <p class="sub">The table keeps its state. Press the buttons in any order.</p>
+
+  <div class="stage">
+    <svg viewBox="85 50 630 430" id="scene" role="presentation">
+      <defs>
+        <filter id="drop-shadow" x="-25%" y="-25%" width="150%" height="150%">
+          <feDropShadow dx="0" dy="10" stdDeviation="6" flood-color="#000000" flood-opacity="0.3"/>
+        </filter>
+        <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="8" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+    <g id="apple">
+        <g transform="scale(0.08) translate(-518, -764)">
+            <path d="M543.74 255c210.2-42.94 322.79 28.73 346.37 214C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0C178.08 903 132.15 652.15 146.43 469 170 283.73 282.6 212.06 492.8 255c5.86 1.49 15.78 1.55 20.37 0 14.83 1.54 24.71 1.48 30.57 0z" fill="#FFFFFF" />
+            <path d="M885.45 439.64q2.73 14.16 4.66 29.34C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0c-88.34-8.86-153.15-40.47-200-85.36-20.43-72.24-23.51-150.22-18.17-218.74 23.58-185.26 136.17-256.93 346.37-214 5.86 1.49 15.78 1.55 20.37 0 14.78 1.55 24.7 1.49 30.56 0 110.33-22.54 193.77-13.5 251.57 27z" fill="#FFC6C6" />
+            <path d="M687.43 244.66c118.81 12.08 185.2 87 202.68 224.32C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0c-58-5.82-105.92-21.46-145.22-44.24 223.8 24.26 333.76-44.77 395.87-262.59 32.82-115.12 28.75-256-18-379.27z" fill="#FF9368" />
+            <path d="M405.59 339.46a135.21 61.95 0 1 0 270.42 0 135.21 61.95 0 1 0-270.42 0Z" fill="#FFC6C6" />
+            <path d="M453.84 951.26l-1.15-0.12c-68.87-6.91-128.3-27.68-176.65-61.74C233 859 198.34 818 173.14 767.27c-50.37-101.34-53.43-219-47.13-299.87l0.1-1c5.83-45.76 17.1-85.6 33.52-118.42 17-33.9 39.88-61.34 68.11-81.56 31.69-22.69 70.78-36.75 116.17-41.8 44.05-4.9 95.52-1.43 153 10.31l0.93 0.21a31.48 31.48 0 0 0 9.21 0.31l3.82-1.29 4.45 0.47c17.13 1.79 22.49 0.75 23.4 0.52l0.93-0.21c57.46-11.74 108.94-15.21 153-10.31 45.39 5 84.47 19.11 116.17 41.8 28.18 20.21 51.13 47.65 68.09 81.57 16.41 32.81 27.69 72.65 33.52 118.42l0.1 1c9.32 119.51 0.32 283.71-95.45 387.23C755.77 918.74 671 951.24 563 951.24h-0.52c-23.45-0.59-59.62-0.59-107.5 0zM518 909.84c18.15 0 33.27 0.15 45.25 0.45 50.49 0 95.42-7.82 133.56-23.18 34.28-13.8 63.95-34.09 88.19-60.3 47.27-51.1 100.32-154.3 84.72-355.73-5.26-41-15.17-76.21-29.45-104.77-13.94-27.88-32.56-50.31-55.27-66.58-25.92-18.56-58.51-30.13-96.85-34.4-39.7-4.42-86.76-1.17-139.87 9.65-8 1.92-18.5 2.15-33.69 0.73a70 70 0 0 1-26.22-0.73c-53.12-10.82-100.18-14.07-139.88-9.65-38.34 4.26-70.93 15.84-96.85 34.4-22.76 16.3-41.38 38.7-55.33 66.58-14.29 28.56-24.2 63.81-29.45 104.77-3.8 49.11-2.73 96.45 3.17 140.73 6.89 51.73 20.3 97.9 39.85 137.23 47.26 95.07 130 149.31 245.83 161.24 23.58-0.28 44.41-0.44 62.29-0.44z" fill="#1a1a1a" />
+            <path d="M516.59 388.26c-36.82 0-73.57-14.47-109.24-43a22.53 22.53 0 1 1 28.15-35.18c55.32 44.27 106.86 44.27 162.18 0a22.53 22.53 0 1 1 28.15 35.18c-35.66 28.53-72.42 43-109.24 43z" fill="#1a1a1a" />
+            <path d="M518.28 363.59a22.55 22.55 0 0 1-21.66-28.77c32.47-112.64 71.48-185.13 119.27-221.62a22.53 22.53 0 1 1 27.35 35.8c-39.27 30-74 96.71-103.32 198.29a22.54 22.54 0 0 1-21.64 16.3z" fill="#1a1a1a" />
+            <path d="M412.75 277.52q87.12 0 157.75-78.84-70.63-78.84-157.75-78.84T255 198.68q70.62 78.84 157.75 78.84z" fill="#89D66D" />
+            <path d="M416.86 298c-63.88 0-122.09-28.82-173-85.66l-12.24-13.67L243.85 185c50.92-56.84 109.12-85.65 173-85.65s122.09 28.82 173 85.65l12.24 13.67-12.24 13.67C538.95 269.18 480.74 298 416.86 298z m-129.48-99.32c17.84 17.55 36.49 31.25 55.63 40.81a164.13 164.13 0 0 0 147.69 0c19.14-9.57 37.79-23.26 55.63-40.81-17.84-17.55-36.49-31.25-55.63-40.81a164.13 164.13 0 0 0-147.69 0c-19.13 9.56-37.79 23.25-55.63 40.81z" fill="#1a1a1a" />
+            <path d="M396.72 182.16h143.35a15.36 15.36 0 0 1 15.36 15.36 15.36 15.36 0 0 1-15.36 15.36H396.72a15.36 15.36 0 0 1-15.36-15.36 15.36 15.36 0 0 1 15.36-15.36z" fill="#015200" />
+        </g>
+    </g>
+
+        <g id="sparkle-asset">
+          <path d="M 0,-15 Q 2,-2 15,0 Q 2,2 0,15 Q -2,2 -15,0 Q -2,-2 0,-15 Z" fill="#FFC107" filter="url(#glow)"/>
+        </g>
+      </defs>
+
+      <g id="table" filter="url(#drop-shadow)">
+        <rect x="150" y="345" width="20" height="100" rx="3" fill="#5c3418"/>
+        <rect x="630" y="345" width="20" height="100" rx="3" fill="#5c3418"/>
+        <rect x="100" y="320" width="600" height="25" rx="5" fill="#a05a2c"/>
+        <rect x="110" y="328" width="580" height="2" rx="1" fill="#733e1c" opacity="0.6"/>
+        <rect x="130" y="335" width="520" height="2" rx="1" fill="#733e1c" opacity="0.6"/>
+        <rect x="105" y="340" width="150" height="2" rx="1" fill="#733e1c" opacity="0.4"/>
+        <rect x="450" y="340" width="220" height="2" rx="1" fill="#733e1c" opacity="0.4"/>
+        <rect x="100" y="320" width="600" height="5" rx="2" fill="#c97a3e"/>
+      </g>
+
+      <!-- The ten apples that come and go. Each outer group holds the
+           position; the inner .pop is what CSS scales. A CSS transform
+           replaces an SVG transform attribute outright, so without the
+           nesting every apple would stack at the origin. -->
+      <g id="cloned-items">
+        <g transform="translate(200,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:0"><use href="#apple"/></g></g>
+        <g transform="translate(280,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:3"><use href="#apple"/></g></g>
+        <g transform="translate(360,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:6"><use href="#apple"/></g></g>
+        <g transform="translate(440,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:1"><use href="#apple"/></g></g>
+        <g transform="translate(520,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:8"><use href="#apple"/></g></g>
+        <g transform="translate(600,315)" filter="url(#drop-shadow)"><g class="pop" style="--i:4"><use href="#apple"/></g></g>
+        <g transform="translate(240,280)" filter="url(#drop-shadow)"><g class="pop" style="--i:9"><use href="#apple"/></g></g>
+        <g transform="translate(320,280)" filter="url(#drop-shadow)"><g class="pop" style="--i:2"><use href="#apple"/></g></g>
+        <g transform="translate(480,280)" filter="url(#drop-shadow)"><g class="pop" style="--i:7"><use href="#apple"/></g></g>
+        <g transform="translate(560,280)" filter="url(#drop-shadow)"><g class="pop" style="--i:5"><use href="#apple"/></g></g>
+      </g>
+
+      <g id="sparkles-container">
+        <g transform="translate(250,220)"><g class="sparkle" style="--i:0"><use href="#sparkle-asset"/></g></g>
+        <g transform="translate(350,180)"><g class="sparkle" style="--i:3"><use href="#sparkle-asset"/></g></g>
+        <g transform="translate(480,250)"><g class="sparkle" style="--i:1"><use href="#sparkle-asset"/></g></g>
+        <g transform="translate(400,220)"><g class="sparkle" style="--i:4"><use href="#sparkle-asset"/></g></g>
+        <g transform="translate(310,260)"><g class="sparkle" style="--i:2"><use href="#sparkle-asset"/></g></g>
+      </g>
+
+      <!-- The apple that is always there -->
+      <g transform="translate(400,310)" filter="url(#drop-shadow)"><use href="#apple"/></g>
+
+      <!-- Raised at 25 degrees at rest; sweeps down and back. -->
+      <g transform="translate(600,180)" filter="url(#drop-shadow)">
+        <g class="stir">
+          <rect x="-180" y="-8" width="180" height="16" rx="8" fill="#d39e6a"/>
+          <ellipse cx="-200" cy="0" rx="35" ry="22" fill="#c48b56"/>
+          <ellipse cx="-200" cy="0" rx="25" ry="14" fill="#a67142"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+
+  <div class="controls">
+    <button type="button" id="up">Scale up</button>
+    <button type="button" id="down">Scale down</button>
+    <button type="button" id="reset" class="ghost">Reset</button>
+    <span class="readout" id="readout"></span>
+  </div>
+
+  <p class="note">
+    <strong>Why this reverses cleanly.</strong> The table is state, not a
+    picture an animation paints. <code>level</code> holds how many apples are
+    on it, and each apple has a CSS transition between hidden and shown. A
+    transition animates whatever changed, in whichever direction it changed —
+    so the same rule handles filling and clearing, and the animation always
+    begins from what is already on screen. Nothing appears from nowhere.
+    Scaling down from a table that already has ten apples simply removes them,
+    in the reverse order, ending on the one apple that was always there.
+  </p>
+</div>
+
+<script>
+  // How many of the ten extra apples are currently on the table.
+  let level = 0;
+
+  const scene    = document.getElementById("scene");
+  const apples   = Array.from(document.querySelectorAll(".pop"));
+  const readout  = document.getElementById("readout");
+  let clearTimer = null;
+
+  function draw(direction) {
+    // Direction only affects ordering and whether sparkles fire; the
+    // apples themselves are driven purely by which ones carry .on.
+    scene.classList.remove("going-up", "going-down", "stirring");
+    void scene.offsetWidth;          // let the removal take effect
+    if (direction) scene.classList.add("going-" + direction, "stirring");
+
+    apples.forEach(function (apple, index) {
+      apple.classList.toggle("on", index < level);
+    });
+
+    readout.textContent = (level + 1) + (level === 0 ? " apple" : " apples");
+
+    if (clearTimer) clearTimeout(clearTimer);
+    clearTimer = setTimeout(function () {
+      scene.classList.remove("going-up", "going-down", "stirring");
+    }, 1400);
+  }
+
+  document.getElementById("up").addEventListener("click", function () {
+    if (level === apples.length) return;
+    level = apples.length;
+    draw("up");
+  });
+
+  document.getElementById("down").addEventListener("click", function () {
+    if (level === 0) return;
+    level = 0;
+    draw("down");
+  });
+
+  document.getElementById("reset").addEventListener("click", function () {
+    level = 0;
+    draw(null);
+  });
+
+  draw(null);
+</script>
+</body>
+</html>
