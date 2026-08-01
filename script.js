@@ -1487,6 +1487,108 @@ function renderIngredientList(container, ingredients) {
 }
 
 // ---------------------------------------------------------------------------
+// Saved recipes.
+//
+// Separate from the working recipe. RECIPE_STORAGE_KEY holds whatever is
+// currently in the editor and is overwritten on every keystroke; this list is
+// only ever added to deliberately, by pressing Save.
+//
+// What gets stored is the recipe at its ORIGINAL size, plus the number of
+// people you were cooking for when you saved it. Storing the already-scaled
+// amounts instead would look simpler, but it bakes the multiplication in: a
+// recipe saved "for 6" would be re-scaled from 6 the next time it was opened,
+// multiplying on top of the earlier multiplication. That's the same
+// compounding mistake scaleIngredient avoids by never mutating its input.
+// ---------------------------------------------------------------------------
+
+const SAVED_RECIPES_KEY = "recipe-scaler-saved";
+
+// Same shape check as a single recipe, plus the two fields a saved entry adds.
+function looksLikeASavedRecipe(value) {
+  if (!looksLikeARecipe(value)) {
+    return false;
+  }
+
+  return typeof value.savedName === "string";
+}
+
+function loadSavedRecipes() {
+  const text = localStorage.getItem(SAVED_RECIPES_KEY);
+
+  if (text === null) {
+    return [];
+  }
+
+  try {
+    const parsed = JSON.parse(text);
+
+    // Valid JSON of the wrong shape would otherwise crash whatever renders
+    // it. Anything that isn't a list of recipes is discarded rather than
+    // trusted; a single bad entry is dropped instead of losing the whole list.
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+
+    return parsed.filter(looksLikeASavedRecipe);
+  } catch (error) {
+    return [];
+  }
+}
+
+function writeSavedRecipes(list) {
+  try {
+    localStorage.setItem(SAVED_RECIPES_KEY, JSON.stringify(list));
+    return true;
+  } catch (error) {
+    // Storage can be disabled or full. Report the failure rather than
+    // swallowing it — unlike the autosave, a deliberate Save that silently
+    // does nothing is worth telling the user about.
+    return false;
+  }
+}
+
+// A stable id, built from the clock rather than a counter so it survives
+// reloads and can't collide with an id already in the list.
+function makeSavedId() {
+  return "r" + Date.now() + Math.floor(Math.random() * 1000);
+}
+
+// Adds the current recipe to the list, or replaces an entry with the same
+// name — saving "Pancakes" twice should update it, not leave two of them.
+function saveCurrentRecipe(recipe, servingsWanted) {
+  const entry = {
+    id: makeSavedId(),
+    savedName: recipe.name.trim(),
+    servings: recipe.servings,
+    scaledFor: servingsWanted,
+    ingredients: recipe.ingredients,
+  };
+
+  const list = loadSavedRecipes();
+  const existingIndex = list.findIndex(function (item) {
+    return item.savedName.toLowerCase() === entry.savedName.toLowerCase();
+  });
+
+  if (existingIndex === -1) {
+    list.push(entry);
+  } else {
+    entry.id = list[existingIndex].id;
+    list[existingIndex] = entry;
+  }
+
+  return { written: writeSavedRecipes(list), replaced: existingIndex !== -1 };
+}
+
+function deleteSavedRecipe(id) {
+  const remaining = loadSavedRecipes().filter(function (item) {
+    return item.id !== id;
+  });
+
+  writeSavedRecipes(remaining);
+  return remaining;
+}
+
+// ---------------------------------------------------------------------------
 // Whole-number-only inputs.
 //
 // A <input type="number"> is looser than it looks: the browser accepts "e"
@@ -1694,54 +1796,137 @@ function playScaleAnimation(multiplier) {
   }, scaleAnimationMs);
 }
 
+// Shows a short message under the Save button, and clears any earlier one.
+function showSaveMessage(text, tone) {
+  const message = document.getElementById("save-message");
+
+  if (message === null) {
+    return;
+  }
+
+  message.textContent = text;
+  message.className = "save-message" + (tone ? " save-message-" + tone : "");
+}
+
+// Keeps the "Saved recipes (N)" count in the header honest.
+function renderSavedCount() {
+  const label = document.getElementById("saved-count");
+
+  if (label === null) {
+    return;
+  }
+
+  const total = loadSavedRecipes().length;
+  label.textContent = total === 0 ? "" : String(total);
+}
+
+function handleSaveButton() {
+  const recipe = readEditorIntoRecipe();
+
+  // A name is what a saved recipe is found by later, so there's no sensible
+  // way to store one without it. Rather than inventing "Untitled 3", the
+  // cursor is put in the name box so the fix is one keystroke away.
+  if (recipe.name.trim() === "") {
+    const nameInput = document.getElementById("recipe-name");
+    nameInput.focus();
+    showSaveMessage("Give the recipe a name first.", "warn");
+    return;
+  }
+
+  if (recipe.ingredients.filter(isBlankIngredient).length === recipe.ingredients.length) {
+    showSaveMessage("Add at least one ingredient first.", "warn");
+    return;
+  }
+
+  const servingsWantedInput = document.getElementById("servings-wanted");
+  const servingsWanted = readServingsInput(servingsWantedInput.value);
+  const result = saveCurrentRecipe(recipe, servingsWanted);
+
+  if (!result.written) {
+    showSaveMessage("Couldn't save — this browser is blocking storage.", "warn");
+    return;
+  }
+
+  showSaveMessage(result.replaced ? "Updated in your saved recipes." : "Saved.", "ok");
+  renderSavedCount();
+}
+
 function handleScaleButton() {
   // Redraw first, so the rows the animation staggers in are the current ones.
   updateScaledOutput();
   playScaleAnimation(currentMultiplier());
 }
 
-// Pre-fills the editor with a saved recipe if this browser already has one,
-// and falls back to the starting example recipe if not. From here on the
-// editor's own fields are what everything else reads from.
-const savedRecipe = loadRecipes();
-if (savedRecipe === null) {
-  renderEditor(exampleRecipe);
-} else {
-  renderEditor(savedRecipe);
+// ---------------------------------------------------------------------------
+// Page setup.
+//
+// This file is loaded by two pages: the scaler itself, and the saved-recipes
+// page. Everything above is shared — the storage functions in particular, so
+// there is one definition of how a recipe is written and read rather than two
+// that can drift apart.
+//
+// Only the block below is specific to the scaler. It's guarded by checking
+// for an element that only exists there: without the guard, the saved page
+// would run getElementById("recipe-name").addEventListener on null and throw
+// before rendering anything.
+// ---------------------------------------------------------------------------
+
+if (document.getElementById("ingredient-rows") !== null) {
+  // Pre-fills the editor with a saved recipe if this browser already has one,
+  // and falls back to the starting example recipe if not. From here on the
+  // editor's own fields are what everything else reads from.
+  const savedRecipe = loadRecipes();
+  if (savedRecipe === null) {
+    renderEditor(exampleRecipe);
+  } else {
+    renderEditor(savedRecipe);
+  }
+
+  // The name and "makes N servings" fields are fixed in index.html - renderEditor
+  // only ever sets their .value, it never recreates them - so their listeners
+  // only need to be attached once, here, rather than inside renderEditor.
+  const recipeNameInput = document.getElementById("recipe-name");
+  recipeNameInput.addEventListener("input", handleEditorFieldChange);
+
+  const recipeServingsInput = document.getElementById("recipe-servings");
+  recipeServingsInput.addEventListener("input", handleEditorFieldChange);
+
+  const addIngredientButton = document.getElementById("add-ingredient-button");
+  addIngredientButton.addEventListener("click", addEmptyRow);
+
+  const servingsWantedInput = document.getElementById("servings-wanted");
+  servingsWantedInput.addEventListener("input", handleEditorFieldChange);
+
+  // Both servings boxes take whole numbers only. You can't cook for 4.5 people,
+  // and a decimal or a stray letter in either one is only ever a mistake.
+  restrictToWholeNumbers(servingsWantedInput);
+  restrictToWholeNumbers(recipeServingsInput);
+
+  const pasteButton = document.getElementById("paste-button");
+  pasteButton.addEventListener("click", handlePasteButton);
+
+  const readRecipeButton = document.getElementById("read-recipe-button");
+  readRecipeButton.addEventListener("click", handleReadRecipeButton);
+
+  const resetButton = document.getElementById("reset-button");
+  resetButton.addEventListener("click", handleResetButton);
+
+  const scaleButton = document.getElementById("scale-button");
+  scaleButton.addEventListener("click", handleScaleButton);
+
+  const saveButton = document.getElementById("save-button");
+  if (saveButton !== null) {
+    saveButton.addEventListener("click", handleSaveButton);
+  }
+
+  renderSavedCount();
+
+  // A recipe opened from the saved page is handed over through the same key the
+  // editor already loads from, so nothing special happens here — but the note
+  // under Save is cleared, since it belongs to the previous recipe.
+  showSaveMessage("", "");
+
+  // Draws the output for the first time, using the pre-filled editor and
+  // whatever the "cooking for" input starts at.
+  handleEditorFieldChange();
 }
-
-// The name and "makes N servings" fields are fixed in index.html - renderEditor
-// only ever sets their .value, it never recreates them - so their listeners
-// only need to be attached once, here, rather than inside renderEditor.
-const recipeNameInput = document.getElementById("recipe-name");
-recipeNameInput.addEventListener("input", handleEditorFieldChange);
-
-const recipeServingsInput = document.getElementById("recipe-servings");
-recipeServingsInput.addEventListener("input", handleEditorFieldChange);
-
-const addIngredientButton = document.getElementById("add-ingredient-button");
-addIngredientButton.addEventListener("click", addEmptyRow);
-
-const servingsWantedInput = document.getElementById("servings-wanted");
-servingsWantedInput.addEventListener("input", handleEditorFieldChange);
-
-// Both servings boxes take whole numbers only. You can't cook for 4.5 people,
-// and a decimal or a stray letter in either one is only ever a mistake.
-restrictToWholeNumbers(servingsWantedInput);
-restrictToWholeNumbers(recipeServingsInput);
-
-const pasteButton = document.getElementById("paste-button");
-pasteButton.addEventListener("click", handlePasteButton);
-
-const readRecipeButton = document.getElementById("read-recipe-button");
-readRecipeButton.addEventListener("click", handleReadRecipeButton);
-
-const resetButton = document.getElementById("reset-button");
-resetButton.addEventListener("click", handleResetButton);
-
-const scaleButton = document.getElementById("scale-button");
-scaleButton.addEventListener("click", handleScaleButton);
-
-// Draws the output for the first time, using the pre-filled editor and
-// whatever the "cooking for" input starts at.
-handleEditorFieldChange();

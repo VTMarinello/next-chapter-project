@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Saved recipes — Recipe Scaler</title>
+    <!-- The same stylesheet as the main page, so the two can't drift apart -->
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <header class="appbar">
+      <div class="appbar-inner">
+        <a class="brand brand-link" href="index.html">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" width="22" height="22" role="presentation">
+              <path d="M8 8h14a5 5 0 0 1 0 10h-1v6a4 4 0 0 1-4 4h-5a4 4 0 0 1-4-4z"
+                    fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linejoin="round" />
+              <path d="M8 15h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
+            </svg>
+          </span>
+          <span class="brand-text">
+            <span class="brand-name">Recipe Scaler</span>
+            <span class="brand-tag">Kitchen maths, done for you</span>
+          </span>
+        </a>
+
+        <a class="saved-link saved-link-back" href="index.html">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor"
+                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          Back to scaling
+        </a>
+      </div>
+    </header>
+
+    <main class="saved-page">
+      <div class="saved-page-head">
+        <h1 class="saved-title">Saved recipes</h1>
+        <p class="saved-sub" id="saved-sub"></p>
+      </div>
+
+      <!-- Filled in by script.js with one row per saved recipe, or an empty
+           state if there are none. -->
+      <div id="saved-list"></div>
+    </main>
+
+    <script src="script.js"></script>
+    <script src="saved.js"></script>
+  </body>
+</html>

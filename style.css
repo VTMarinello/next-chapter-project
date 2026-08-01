@@ -1180,3 +1180,272 @@ button:focus-visible {
     grid-template-columns: 5.25rem minmax(0, 1fr);
   }
 }
+
+
+/* ============================================================
+   SAVED RECIPES
+   ============================================================ */
+
+/* ---------- The header link ----------
+   Prominent on purpose: it is the only route to the saved page,
+   and it carries a count so you can tell at a glance whether
+   there's anything there. */
+
+.saved-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  color: var(--on-dark);
+  background: rgba(246, 239, 230, 0.08);
+  border: 1px solid rgba(246, 239, 230, 0.16);
+  transition: background-color 0.14s ease, border-color 0.14s ease;
+}
+
+.saved-link:hover {
+  background: rgba(246, 239, 230, 0.14);
+  border-color: rgba(237, 192, 106, 0.5);
+}
+
+.saved-count {
+  min-width: 1.35rem;
+  padding: 0 0.35rem;
+  border-radius: 999px;
+  background: var(--gold);
+  color: var(--dark);
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.35rem;
+}
+
+/* No count means nothing saved — hide the badge rather than
+   showing an empty circle. */
+.saved-count:empty {
+  display: none;
+}
+
+.saved-link-back {
+  background: transparent;
+  color: var(--on-dark-2);
+}
+
+.brand-link {
+  text-decoration: none;
+}
+
+/* ---------- The Save button on the dark card ---------- */
+
+.button-on-dark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  width: 100%;
+  margin-top: var(--s2);
+  background: transparent;
+  color: var(--on-dark-2);
+  border: 1px solid rgba(246, 239, 230, 0.2);
+  box-shadow: none;
+}
+
+.button-on-dark:hover {
+  background: rgba(246, 239, 230, 0.07);
+  color: var(--on-dark);
+  border-color: rgba(237, 192, 106, 0.45);
+  filter: none;
+}
+
+.button-on-dark:active {
+  transform: translateY(1px);
+  box-shadow: none;
+}
+
+.save-message {
+  margin: var(--s2) 0 0;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--on-dark-3);
+}
+
+.save-message:empty {
+  display: none;
+}
+
+.save-message-ok {
+  color: var(--gold);
+}
+
+.save-message-warn {
+  color: #f0a08a;
+}
+
+/* ============================================================
+   THE SAVED PAGE
+   ============================================================ */
+
+.saved-page {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: var(--s6) var(--s5) var(--s6);
+}
+
+.saved-page-head {
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s4);
+  border-bottom: 2px solid var(--hairline-2);
+}
+
+.saved-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 2rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+
+.saved-sub {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.saved-sub:empty {
+  display: none;
+}
+
+/* ---------- One saved recipe ----------
+   A wide row, not a square tile. Twenty tiles become a wall you
+   have to scan in two dimensions; twenty rows stay a list you
+   read straight down. Each carries a rule beneath it and an
+   accent edge that appears on hover, so they stay separate
+   objects however many there are. */
+
+.saved-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+  padding: var(--s4) var(--s4) var(--s4) var(--s5);
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-left: 4px solid var(--hairline-2);
+  border-radius: var(--r);
+  margin-bottom: var(--s3);
+  transition: border-color 0.14s ease, box-shadow 0.14s ease,
+    transform 0.1s ease;
+}
+
+.saved-row:hover {
+  border-left-color: var(--accent);
+  box-shadow: 0 8px 20px -12px rgba(33, 26, 21, 0.35);
+  transform: translateX(2px);
+}
+
+.saved-row-body {
+  min-width: 0;
+}
+
+.saved-row-name {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.saved-row-meta {
+  margin: 0.15rem 0 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.saved-row-preview {
+  margin: 0.35rem 0 0;
+  font-size: 0.88rem;
+  color: var(--ink-2);
+  /* One line only — a long ingredient list would push the rows
+     to wildly different heights and break the rhythm. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.saved-row-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: none;
+}
+
+.saved-row-actions button {
+  min-height: 38px;
+}
+
+/* ---------- Nothing saved yet ---------- */
+
+.saved-empty {
+  padding: var(--s6) var(--s5);
+  text-align: center;
+  color: var(--ink-2);
+  background: var(--surface);
+  border: 1px dashed var(--hairline-2);
+  border-radius: var(--r-lg);
+}
+
+.saved-empty-title {
+  margin: 0 0 var(--s2);
+  font-family: var(--serif);
+  font-size: 1.25rem;
+  color: var(--ink);
+}
+
+.saved-empty p {
+  margin: 0 auto;
+  max-width: 28rem;
+}
+
+.saved-empty-link {
+  display: inline-block;
+  margin-top: var(--s4);
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent-wash);
+}
+
+.saved-empty-link:hover {
+  border-bottom-color: var(--accent);
+}
+
+@media (max-width: 620px) {
+  /* The tagline and the link text both go; the icon and count
+     carry the meaning on a narrow bar. */
+  .saved-link span:not(.saved-count) {
+    display: none;
+  }
+
+  .saved-page {
+    padding: var(--s5) var(--s4);
+  }
+
+  .saved-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--s3);
+  }
+
+  .saved-row-actions button {
+    flex: 1;
+  }
+}

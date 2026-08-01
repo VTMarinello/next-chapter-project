@@ -29,6 +29,19 @@
             <span class="brand-tag">Kitchen maths, done for you</span>
           </span>
         </div>
+
+        <!-- Deliberately prominent: it's the only way to the saved recipes,
+             and it carries a count so you can see at a glance whether there
+             is anything there. script.js fills the count in. -->
+        <a class="saved-link" href="saved.html">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+            <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"
+                  fill="none" stroke="currentColor" stroke-width="2"
+                  stroke-linejoin="round" />
+          </svg>
+          Saved recipes
+          <span class="saved-count" id="saved-count"></span>
+        </a>
       </div>
     </header>
 
@@ -293,6 +306,22 @@
                  scene and re-deals the list, so there's a deliberate moment
                  where the change is shown rather than just happening. -->
             <button type="button" id="scale-button">Scale it</button>
+
+            <!-- Saving is a separate, deliberate act — the working recipe is
+                 already autosaved on every keystroke, but that copy is
+                 overwritten constantly. This adds it to a keepable list.
+                 Needs a name, which the editor already asks for. -->
+            <button type="button" id="save-button" class="button-on-dark">
+              <svg viewBox="0 0 24 24" width="15" height="15" aria-hidden="true">
+                <path d="M6 3h12a1 1 0 0 1 1 1v16l-7-4-7 4V4a1 1 0 0 1 1-1z"
+                      fill="none" stroke="currentColor" stroke-width="2"
+                      stroke-linejoin="round" />
+              </svg>
+              Save recipe
+            </button>
+
+            <!-- Filled in by script.js: "Saved.", or a reason it couldn't. -->
+            <p class="save-message" id="save-message"></p>
           </div>
 
           <!-- Starts empty on purpose. script.js fills this in. -->
