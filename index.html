@@ -155,7 +155,7 @@
           </div>
 
           <div class="stage" aria-hidden="true">
-            <svg viewBox="95 195 610 258" class="scene" role="presentation">
+            <svg viewBox="95 115 610 345" class="scene" role="presentation">
               <defs>
                 <!-- Artwork only. These path strings are the drawn shape of
                      an apple — nothing here is logic. -->
@@ -228,9 +228,16 @@
                 <use href="#apple" />
               </g>
 
-              <!-- The spoon that swings across as the apples appear. Moved
-                   down from the original so it sits inside the crop instead
-                   of being clipped by the top corner. -->
+              <!-- The spoon. At rest it sits raised at 25 degrees, waiting
+                   above the table, and only sweeps down once the button is
+                   pressed.
+
+                   The crop above has to make room for that raised position:
+                   pivoting at (650,243), a 235-unit spoon at 25 degrees
+                   reaches up to y=134. An earlier viewBox started at y=195
+                   and sheared the whole raised spoon off, so it appeared out
+                   of nowhere mid-swing. The viewBox now starts at y=115,
+                   leaving ~19 units of clearance above it. -->
               <g transform="translate(650, 243)">
                 <g class="stir">
                   <rect x="-180" y="-8" width="180" height="16" rx="8" fill="#d39e6a" />

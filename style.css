@@ -722,7 +722,9 @@ button:focus-visible {
    so it reads as part of the object rather than a strip stuck to
    it. A soft floor gradient sits the table on something. */
 .stage {
-  background: radial-gradient(120% 80% at 50% 100%, var(--dark-3), var(--dark) 70%);
+  /* A soft floor glow, so the table sits on something rather than
+     floating in flat black. */
+  background: radial-gradient(125% 70% at 50% 102%, var(--dark-3), var(--dark) 72%);
   border-bottom: 1px solid var(--dark-line);
 }
 
@@ -944,12 +946,19 @@ button:focus-visible {
   100% { transform: rotate(-10deg); }
 }
 
-/* The spoon sweeping the other way, for scaling down. */
+/* Scaling down: the spoon sweeps through to clear the table, then
+   lifts back to its raised resting angle — the table is empty again,
+   so the spoon returns to where it started.
+
+   It must never rotate ABOVE 25 degrees. The crop is sized to fit the
+   spoon at exactly that angle (top edge y=134 against a viewBox
+   starting at y=115); anything higher swings it out of frame. An
+   earlier version peaked at 52 degrees, which put it at y=55. */
 @keyframes spoon-stir-back {
   0%   { transform: rotate(25deg); }
-  35%  { transform: rotate(52deg); }
-  70%  { transform: rotate(36deg); }
-  100% { transform: rotate(40deg); }
+  35%  { transform: rotate(-14deg); }
+  70%  { transform: rotate(8deg); }
+  100% { transform: rotate(25deg); }
 }
 
 /* Each ingredient line dealt in from slightly below. */
