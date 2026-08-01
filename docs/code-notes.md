@@ -89,13 +89,13 @@ logic gets built on top of them.
   that it buys nothing here.
 - **The colour `#a4432b` is hard-coded twice** in style.css (the heading and the border).
   Changing the theme means changing two places. A CSS custom property would fix that — a
-  reasonable thing to say you'd do in chunk 7.
+  reasonable thing to say you'd do in chunk 9.
 - **The viewport `<meta>` tag is present** (line 6) even though there's no phone-specific styling
   yet. It's harmless and correct to have early — without it phones shrink the whole page to
   simulate a desktop.
 - **`textContent` rather than `innerHTML`** is the safer choice: it inserts text as text, so a
   stray `<` or `&` can never be mistaken for markup. That matters later when users type their
-  own recipe names in chunk 5.
+  own recipe names in chunk 6.
 
 **Three questions an interviewer could ask:**
 

@@ -24,6 +24,21 @@ it in conversation.
 - CSS and JS in separate files, linked from the HTML
 - No secrets, keys, or personal information anywhere in the repo
 
+## Code style
+
+Optimised for **explainability over brevity**. The user has to defend every line out loud in an
+interview, so the code is deliberately more broken-up than a working programmer would write.
+
+- **Many small, single-job functions.** If a function can't be described in one sentence, split
+  it. Twenty functions of four lines each beats four functions of twenty lines — the user is
+  never explaining a long function, only a short one.
+- **Name functions after what they do**, not how. `snapToNiceFraction`, not `roundHelper`.
+- **Comment the *why*, not the *what*.** `// eggs stay fractional — the cook decides whether to
+  round` earns its place. `// loop through the array` does not.
+- Being a little verbose or "impractical" is acceptable here when it makes a step easier to
+  follow. Clarity wins over cleverness every time.
+- No one-liner tricks, chained ternaries, or regex without a comment explaining what it matches.
+
 ## The working loop
 
 Never build the whole app in one pass. For each chunk in `PLAN.md`:
