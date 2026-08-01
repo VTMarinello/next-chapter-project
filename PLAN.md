@@ -76,12 +76,12 @@ everything before it is groundwork, everything after is making it genuinely usab
 | 2 | Display one hard-coded recipe on the page, built from data in JavaScript rather than typed into the HTML | committed | `Display a recipe` | ☑ |
 | 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | committed | `Scale ingredients by servings` | ☑ |
 | 4 | Nice fractions — turn `0.75` into `¾` by snapping to the nearest amount a cook can actually measure | committed | `Show amounts as fractions` | ☑ |
-| 5 | **Mixed-unit decomposition.** `0.5833 cups` → `9 tbsp 1 tsp`. The change-making ladder, plus the rule deciding when a plain fraction is good enough | committed | `Break amounts into mixed units` | ☐ |
+| 5 | **Mixed-unit decomposition.** `0.5833 cups` → `9 tbsp 1 tsp`. The change-making ladder, plus the rule deciding when a plain fraction is good enough | committed | `Break amounts into mixed units` | ☑ |
 | 6 | **The editor** — name, servings, and a list of editable ingredient rows. Add, edit, delete a row. This is the single shared surface both entry paths lead to | committed | `Add recipe editor` | ☑ |
-| 7 | **Paste-and-parse.** Drop in recipe text, regex fills the editor rows, review notice reports what parsed and flags what didn't | committed | `Parse pasted recipe text` | ☐ |
-| 8 | Save recipes in the browser so they survive a refresh | committed | `Save recipes in the browser` | ☐ |
-| 9 | Styling and layout — the three regions visually distinct, editor rows stacking on a phone, scaled output large and readable at the counter | committed | `Style the layout` | ☐ |
-| 10 | Empty states and invalid input — zero servings, negative numbers, blank fields, no recipes yet. **Fixed here:** blank "Makes N servings" used to divide by zero and display `Infinity cups flour`; both blank displayed `NaN`; blank "cooking for" gave `×0`. Now an unusable servings value shows the recipe at original amounts with a plain-language message, and never scales by a nonsense number | committed | `Handle empty and invalid input` | ☐ |
+| 7 | **Paste-and-parse.** Drop in recipe text, regex fills the editor rows, review notice reports what parsed and flags what didn't | committed | `Parse pasted recipe text` | ☑ |
+| 8 | Save recipes in the browser so they survive a refresh | committed | `Save recipes in the browser` | ☑ |
+| 9 | Styling and layout — the three regions visually distinct, editor rows stacking on a phone, scaled output large and readable at the counter | committed | `Style the layout` | ☑ |
+| 10 | Empty states and invalid input — zero servings, negative numbers, blank fields, no recipes yet. **Fixed here:** blank "Makes N servings" used to divide by zero and display `Infinity cups flour`; both blank displayed `NaN`; blank "cooking for" gave `×0`. Now an unusable servings value shows the recipe at original amounts with a plain-language message, and never scales by a nonsense number | committed | `Handle empty and invalid input` | ☑ |
 
 Chunks 6 and 7 are in that order deliberately: the parser's output lands in the form, and the form
 is where mis-parsed lines get corrected. Building the parser first would leave nowhere to fix its

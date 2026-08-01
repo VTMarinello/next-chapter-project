@@ -622,3 +622,409 @@ used, so a hand-typed blank and a hard-coded `null` behave identically everywher
 3. `addEmptyRow` and `deleteRow` both start by calling `readEditorIntoRecipe()` before changing
    anything. Why is that read necessary — what would go wrong if they started from `exampleRecipe`, or
    from whatever recipe object was last rendered, instead of re-reading the live boxes?
+
+---
+
+## Chunk 5 — Break amounts into mixed units
+
+**What it does for the user:**
+This is the technical centrepiece of the app, and it was the user's own idea, pushed back against an
+AI suggestion (see `PLAN.md`'s decisions table). Before this chunk, a scaled amount only ever snapped
+to the nearest of six fractions — `¼ ⅓ ½ ⅔ ¾` or a whole number. That's fine for `2.25 cups` (→ `2¼
+cups`), but scaling ⅓ cup by 1.75× gives `0.5833… cups`, and the nearest of those six fractions is `½
+cup` — which quietly throws away about 1⅓ tablespoons of milk, roughly 8% of the real amount. After
+this chunk, that same amount displays as `9 tbsp 1 tsp`: broken down into smaller measuring units, the
+way a person actually would if asked to measure something no cup exists for. Amounts already using
+round numbers, like `4.5 cups`, are untouched — they still show as `4½ cups`, not needlessly split.
+
+**How it works, step by step — tracing `0.5833… cups` (⅓ cup scaled by 1.75×) to `9 tbsp 1 tsp`:**
+
+1. `formatAmount(0.5833, "cups")` is the entry point. `classifyUnit("cups")` checks the unit against
+   four hardcoded word lists — `volumeUnitNames`, `weightUnitNames`, `countUnitNames`, or an empty
+   string for "no unit" — and returns `"volume"`. That routes the amount to `formatVolumeAmount`.
+2. `formatVolumeAmount` tries the cheap option first: `isFractionGoodEnough(0.5833, "cups")`. Inside,
+   `splitWholeAndLeftover` gives whole `0`, leftover `0.5833`. `snapToNiceFraction(0.5833)` finds `½`
+   (0.5) is the closest of the six candidates.
+3. The gap between the real amount and that snapped fraction is `|0.5833 − 0.5| = 0.0833 cups`. That
+   gap is converted into teaspoons with `toBaseUnit(0.0833, "cups")` → `0.0833 × 48 = 4 tsp`. That is
+   compared against the tolerance, `fractionToleranceInTsp = 1.5` (half a tablespoon). `4 > 1.5`, so
+   the fraction is **not** good enough — this amount needs decomposing.
+4. `toBaseUnit(0.5833, "cups")` converts the *whole* amount (not just the error) to teaspoons:
+   `0.5833 × 48 = 28 tsp` exactly.
+5. `decomposeToUnits(28)` walks `volumeLadder` — cup (48 tsp), tbsp (3 tsp), tsp (1 tsp) — from
+   largest to smallest, the same way a cash register makes change from the largest coins first. Cup:
+   `floor(28 / 48) = 0`, contributes nothing, skipped entirely (so the result never reads "0 cups").
+   Tbsp: `floor(28 / 3) = 9`, remainder `28 − 27 = 1`; pushes `{amount: 9, unit: "tbsp"}`. Tsp is the
+   smallest rung, so whatever's left — `1` — is pushed as-is.
+6. `dropNegligibleTail` checks the last part. `1` is a whole number, so nothing more happens — a
+   fractional leftover would have been either dropped (if under ⅛ tsp) or snapped to a nice fraction.
+7. `formatParts([{9, tbsp}, {1, tsp}])` joins them into text: `"9 tbsp 1 tsp"`.
+
+**Why converting to teaspoons first makes the whole problem easy:**
+Without a common unit, "how many cups, tbsp, and tsp make up 0.5833 cups" would need three different
+conversion factors compared pairwise against each other. By converting everything down to the ladder's
+smallest rung first — teaspoons — the whole problem becomes one number on one number line. From there,
+"how many whole cups fit" is a single division, and whatever's left carries straight down to the next
+rung as a smaller version of the exact same question. That's why `toBaseUnit`, `isFractionGoodEnough`,
+and `decomposeToUnits` are all written in terms of teaspoons rather than each juggling conversions.
+
+**Why `4.5 cups` stays `4½ cups` and does not become `4 cups 8 tbsp`:**
+Run `isFractionGoodEnough(4.5, "cups")`: leftover is `0.5`, and `snapToNiceFraction(0.5)` matches `½`
+*exactly* — the gap is `0`, which is well under the `1.5 tsp` tolerance. The fraction is judged good
+enough, so `formatVolumeAmount` never even reaches `decomposeToUnits`. This is the "fraction first,
+decompose second" rule from `PLAN.md`: decomposition is not automatically better. `4 cups 8 tbsp` is a
+worse way to say the same amount — two measuring implements instead of one, harder to read at a glance
+— so the code only decomposes when a plain fraction would mislead by more than half a tablespoon.
+
+**Is `28 tsp → 9 tbsp 1 tsp` with zero leftover luck?**
+Partly, and it's worth being precise about which part is guaranteed. What **is** guaranteed by design:
+`1 cup = 48 tsp` and `1 tbsp = 3 tsp` are both whole-number ratios. Because of that, the
+division-and-remainder loop never introduces its own rounding error — cup and tbsp counts always come
+out as exact whole numbers, with only the smallest rung (tsp) ever holding a leftover fraction. That
+part is structural, not coincidental. What is **not** guaranteed is that the teaspoon count landed on a
+whole number (`28`) at all. `⅓ cup` is `16 tsp` exactly (`48 ÷ 3`), and the multiplier `1.75` is `7/4`
+— so `16 × 7/4 = 28`, a whole number, because `16` happens to be divisible by `4`. A multiplier of
+`1.6×` would give `16 × 1.6 = 25.6 tsp`, ending on a fractional tsp that `dropNegligibleTail` would
+snap to `1½ tsp` rather than showing a raw decimal. So: the *lossless* property is guaranteed by the
+integer ratios; this example landing on a whole final teaspoon count is a property of these numbers.
+
+**The pieces:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `classifyUnit(unit)` | a unit string, e.g. `"cups"` | checks it against four hardcoded word lists | `"volume"` / `"weight"` / `"count"` / `"none"` |
+| `toBaseUnit(amount, unit)` | a volume amount and its unit | looks up the unit's ladder rung, multiplies by its teaspoons-per-unit | the amount in teaspoons |
+| `isFractionGoodEnough(amount, unit)` | a raw scaled amount and its unit | snaps to the nearest nice fraction, measures the gap in teaspoons, compares to tolerance | `true`/`false` |
+| `decomposeToUnits(baseAmountInTsp)` | an amount already in teaspoons | walks cup→tbsp→tsp, taking as many whole units as fit at each rung, carrying the remainder down | an array like `[{9, "tbsp"}, {1, "tsp"}]` |
+| `dropNegligibleTail(parts)` | the array `decomposeToUnits` returned | drops the last part if under ⅛ tsp; snaps it to a nice fraction if fractional but not negligible | a cleaned-up array |
+| `formatVolumeAmount(amount, unit)` | a raw scaled amount and its unit | tries a fraction first, falls back to decomposing | `"9 tbsp 1 tsp"` or `"4½ cups"` |
+| `formatWeightAmount(amount, unit)` | a raw scaled amount, e.g. grams | rounds to a whole number, no fractions | `"247 g"` |
+| `formatAmount(amount, unit)` | any raw scaled amount and unit | classifies the unit, hands off to whichever formatter fits | the final display text |
+
+**Worth knowing:**
+
+- **`fractionToleranceInTsp = 1.5` is an arbitrary, hardcoded judgment call**, and the code says so in
+  its own comment. It's a hard cutoff, which creates a real discontinuity: an error of `1.49 tsp`
+  displays as a clean fraction, and `1.51 tsp` — a difference invisible to a cook — produces a
+  completely different-shaped multi-part decomposition. Defensible, but it is a line, not a law.
+- **Metric amounts always round to the nearest whole unit**, regardless of scale. `247.3g → 247g` is a
+  trivial 0.1% change, but `1.5ml → 2ml` is a 33% change — the same blanket rule at very different
+  magnitudes, and nothing in `roundWeight` adjusts for that.
+- **The unit vocabulary is a small, hardcoded set of English words.** No `"fl oz"`, `"pint"`, or
+  `"quart"`. Any unit outside the lists is classified `"none"` and just rounded to two decimals.
+- **`decomposeToUnits` rounds off tiny floating-point noise** before the loop starts, because
+  JavaScript can leave a number like `28` sitting as `27.999999999999996`, which would silently
+  undercount a unit by one. A real, necessary guard — and a sign floating-point is being trusted with
+  exact-looking results.
+
+**Three questions an interviewer could ask:**
+
+1. Why does `isFractionGoodEnough` measure its error in teaspoons instead of in whatever unit the
+   ingredient was originally written in — what would break if it compared errors in cups directly for
+   a `tbsp`-based ingredient?
+2. `4.5 cups` stays `4½ cups` but `0.5833 cups` decomposes into `9 tbsp 1 tsp`. Both start by snapping
+   to a fraction. What's the one number that decides which path each amount takes, and where does that
+   number come from?
+3. If someone typed `"1.5 fl oz"` into an ingredient row, walk through `classifyUnit` and explain
+   exactly what would happen to that amount when it's scaled and displayed — and why.
+
+---
+
+## Chunk 7 — Parse pasted recipe text
+
+**What it does for the user:**
+Region 1, "Add a Recipe," gets its actual purpose here: paste a block of recipe text into the
+textarea, click "Read recipe," and every line becomes a row in the editor below — amount, unit, and
+ingredient name split apart automatically, without typing each ingredient by hand. A line the parser
+can't make sense of still becomes a row (original text preserved, warning mark beside it) rather than
+silently vanishing. A short message at the top of the editor reports what happened: "Read 9 of 10
+lines. Check the marked one."
+
+**How it works — tracing the two hard lines through `parseLine`:**
+
+**`"1 (14 oz) can diced tomatoes"` — flagged as unparsed:**
+
+1. `readLeadingAmount` grabs the leading number. `isRange` fails (no dash), so `matchAmountText` tries
+   each pattern in order and `plainNumberPattern` matches `"1"`. The rest is `"(14 oz) can diced
+   tomatoes"`.
+2. The very next check is whether the rest starts with `(`. It does — a parenthetical stuck right
+   after an amount is a nested amount this parser doesn't attempt to untangle, so it's flagged rather
+   than guessed at.
+3. Returns `{amount: null, unit: "", name: <the whole original line>, unparsed: true}`. The row appears
+   amber with a `⚠`, and the full original text sits in the name field so there's something to
+   *correct* rather than retype.
+
+**`"Juice of 1 lemon"` — NOT flagged, passes through unscaled:**
+
+1. Every amount pattern requires a match starting at the very first character (`^`), and the first
+   character is `"J"` — none match. `readLeadingAmount` returns `null`.
+2. That is **rule 1**: no leading number means the line is correct as written at any batch size. It
+   returns `unparsed: false` — it is *not* flagged.
+3. Because `amount` is `null`, the output shows a quiet `(not scaled)` note, the same as "Salt and
+   pepper to taste". This is a genuinely debatable outcome: "1 lemon" *is* a real scalable quantity
+   that the parser simply never looks for, because the number isn't at the front of the line. Treating
+   it identically to a truly unscalable line is a judgment call, not obviously correct — worth having
+   an opinion on.
+
+**The three rules, and where each lives:**
+
+| Rule | What it means | Where in the code |
+|---|---|---|
+| 1. No leading number → leave alone | `readLeadingAmount` returns `null`; passes through with `amount: null`, `unparsed: false` | `parseLine`, the first `if` |
+| 2. Ranges scale end to end | `"2-3 cloves"` keeps both numbers as `amount`/`amountMax`, each scaled like a plain amount | `isRange` / `readLeadingRange` |
+| 3. Unparseable is flagged, never dropped | original line text kept in `name`, `unparsed: true` | `parseLine`, the `(` check |
+
+**The pieces:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `splitIntoLines(text)` | the raw pasted blob | splits on newlines, trims, drops blank lines | array of line strings |
+| `matchAmountText(text)` | one line's start | tries four regex patterns in order, most specific first | the matched amount text, or `null` |
+| `amountTextToNumber(text)` | a matched amount string | normalizes five shapes (`2`, `1.5`, `1/2`, `1 1/2`, `½`) into a number | a number |
+| `looksLikeUnit(word)` | one word, e.g. `"Tbsp."` | lowercases, strips a trailing period, checks `knownUnits` | `true`/`false` |
+| `parseLine(line)` | one line of pasted text | applies the three rules above | `{amount, amountMax, unit, name, unparsed}` |
+| `countUnparsed(recipe)` | a recipe object | counts ingredients with `unparsed: true` | a number |
+| `renderReviewNotice(total, unparsed)` | the two counts | writes the "Read N of M lines" message | nothing — writes to the page |
+| `loadPastedText(text)` | the pasted blob | parses every line, keeps existing name/servings, redraws the editor | nothing — side effects |
+| `handlePasteButton()` | nothing | reads the clipboard if permitted; otherwise focuses the textarea | nothing — side effects |
+
+**Worth knowing:**
+
+- **The `(` check is narrow and position-specific.** It only catches a parenthetical *immediately*
+  after the amount. One anywhere else in the line wouldn't trigger the flag, so flagging isn't
+  consistent across every place a `(` could plausibly appear.
+- **`Juice of 1 lemon` is a real limitation, not a bug** — the parser only looks for a number at the
+  very start. Any quantity written mid-sentence is invisible and silently treated as unscalable.
+- **`amountTextToNumberMixed` splits on a single literal space**, not any run of whitespace. `"1  1/2"`
+  (two spaces) would misparse — a small fragility inherited from a simpler pattern.
+- **The clipboard button fails silently.** If `readText()` is refused (realistic on a `file://` page),
+  the `.catch()` just focuses the textarea — nothing tells the user *why* nothing pasted.
+- **`knownUnits` is a fixed list.** An unrecognised unit doesn't break anything — it folds into the
+  ingredient name, a soft graceful failure, but some real units are silently unrecognised.
+
+**Three questions an interviewer could ask:**
+
+1. Why does `"1 (14 oz) can diced tomatoes"` get flagged as unparsed, but `"Juice of 1 lemon"` does
+   not? Walk through exactly which check in `parseLine` decides each outcome.
+2. `looksLikeUnit` is checked against the *second* word after the amount, not the first word of the
+   line. What would `parseLine` do with `"3 large eggs"` if that assumption were wrong — and why does
+   it work correctly here?
+3. Does a line like `"Juice of 1 lemon"` count toward the review notice's "read" total or its "needs a
+   check" total — and do you think that's the right way to represent it to the user?
+
+---
+
+## Chunk 8 — Save recipes in the browser
+
+**What it does for the user:**
+The recipe survives closing the tab or refreshing. Every edit — typing a name, changing an amount,
+adding or deleting a row, pasting a new recipe — is quietly saved as it happens, with no "Save" button
+to remember. A "Start over (reset to example)" button gives a way back to the original pancake recipe.
+
+**How it works, step by step:**
+
+1. Every keystroke already calls `handleEditorFieldChange()` (chunk 6). This chunk adds one line: after
+   updating the output, it calls `saveRecipes()`.
+2. `saveRecipes` calls `readEditorIntoRecipe()` — the same function that feeds the output — then
+   converts it to text with `JSON.stringify`. **`localStorage` can only store strings**, never a raw
+   object, so this conversion is required. **JSON** (JavaScript Object Notation) represents an object's
+   data as a readable string: `{"name":"Pancakes","servings":4,...}`.
+3. `localStorage.setItem("recipe-scaler-recipe", recipeText)` writes it under one namespaced key.
+   `localStorage` is a key/value store built into the browser: it persists between page loads on the
+   same device, never leaves the browser, and isn't a database or a network call — which is why it
+   satisfies the project's "no databases, no APIs" rule.
+4. On the next page load, `loadRecipes()` runs first. If nothing was saved, `getItem` returns `null`
+   and the page falls back to `exampleRecipe`. Otherwise `JSON.parse` turns the text back into an
+   object and `renderEditor` fills the boxes with it.
+5. "Start over" calls `clearSavedRecipe()` (`removeItem`), redraws with `exampleRecipe`, refreshes the
+   output — and deliberately does *not* re-save, so storage stays genuinely empty until the next edit.
+
+**Why both functions are wrapped in `try`/`catch`:**
+A **try/catch** block lets code attempt something risky and recover instead of crashing. Two different
+failures are guarded, one on each side:
+
+- **The write.** `setItem` can throw — some private browsing modes disable storage, and there's a size
+  limit. Without the `catch`, a failed save would throw on *every keystroke*, far more disruptive than
+  just failing to save.
+- **The read.** `JSON.parse` throws on text that isn't valid JSON — possible if someone hand-edits the
+  value in devtools, or an older version wrote a different shape. Without the `catch`, a broken saved
+  value would throw the moment the page loads, and the **entire page** would fail before anything
+  else ran: a blank screen, an error only in the console, no recipe and no reset button to fix it.
+
+**The pieces:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `saveRecipes()` | nothing (reads the live editor) | reads the editor, stringifies, writes to `localStorage`, swallows write errors | nothing — side effect |
+| `loadRecipes()` | nothing (reads `localStorage`) | reads the saved string; parses it; returns `null` on missing or broken data | a recipe object, or `null` |
+| `clearSavedRecipe()` | nothing | removes the saved key, swallows errors | nothing — side effect |
+| `handleResetButton()` | nothing (a click handler) | clears storage, redraws with `exampleRecipe`, refreshes output | nothing — side effect |
+
+**Worth knowing:**
+
+- **A failed save is completely invisible.** Both `catch` blocks are empty by design — reasonable so a
+  storage hiccup never breaks typing, but someone typing a whole recipe in a browser where storage is
+  disabled would see everything working and then lose it all on refresh, with no warning anywhere.
+- **Only one recipe is ever saved.** A single fixed key, no list to switch between — that's explicitly
+  a stretch goal in `PLAN.md`, not built. Pasting a new recipe overwrites the one slot.
+- **"Start over" has no confirmation.** One click irreversibly wipes what's saved, no "are you sure?".
+- **Saving happens on every keystroke, with no debounce.** Harmless at recipe size, but it writes to
+  storage far more often than strictly necessary.
+
+**Three questions an interviewer could ask:**
+
+1. Why does `saveRecipes` need `JSON.stringify` at all — what would happen if you passed the recipe
+   object directly to `localStorage.setItem`?
+2. Walk through exactly what happens on page load if someone opened devtools and typed garbage into
+   the saved `localStorage` value. What does the user see?
+3. The "Start over" button has no confirmation prompt. What's the actual sequence of function calls
+   when it's clicked, and what would you add to make it ask first?
+
+---
+
+## Chunk 9 — Style the layout
+
+**What it does for the user:**
+The app goes from "three boxes with default browser styling" to a page with a visual identity: a warm
+cream background, rust-red accents, and three distinctly-shaped regions — paste area, editable form,
+and a bolder, larger "hero" card for the scaled output, since that's the part actually read at the
+counter while cooking. On a narrow screen, ingredient rows stack vertically instead of staying cramped
+in a horizontal row that would require scrolling sideways.
+
+**How it works, step by step:**
+
+1. `style.css` opens with a `:root` block defining nine CSS **custom properties** — reusable named
+   values, written as `--name: value` and referenced with `var(--name)`. `--color-rust: #a4432b` is
+   the app's one accent colour, defined exactly once.
+2. Every element that previously needed the literal hex `#a4432b` typed out — headings, borders,
+   buttons, the multiplier display — now writes `var(--color-rust)`. Chunk 1's own notes flagged this
+   exact colour as "hard-coded twice… a reasonable thing to say you'd do in chunk 9." This is that fix.
+3. `*, *::before, *::after { box-sizing: border-box; }` changes how every element's width is measured,
+   so padding and borders are counted *inside* that width rather than added on top. Without it, every
+   input box would need its own fix to avoid overflowing its container.
+4. `main { display: flex; flex-direction: column; gap: 1.75rem; }` stacks the three regions vertically
+   with even spacing controlled from one place instead of each region carrying its own margin.
+5. `.region-card` gives all three sections the same base look — white background, thin border, rounded
+   corners, subtle shadow. `.region-hero`, layered on top for the output section only, overrides the
+   border to be thicker and the shadow stronger, so it visually stands apart as the important one.
+6. In `index.html`, the output is now wrapped in a `<section id="scale-output" class="region-card
+   region-hero">`. Wrapping an existing element in a new parent doesn't change its `id`, so every
+   `getElementById` call in `script.js` still finds the same elements — no behaviour changed.
+7. `@media (max-width: 600px)` is a **media query** — a rule that only applies when the window is
+   narrower than 600 pixels. Inside it, `.ingredient-row` switches from a horizontal flex row to a
+   vertical stack, and each input becomes full width.
+
+**The pieces:**
+
+| Thing | What it's for |
+|---|---|
+| `:root { --color-rust: #a4432b; … }` | Nine reusable colour values, defined once |
+| `box-sizing: border-box` reset | Makes declared widths include padding and border |
+| `.region-card` | Shared white-card look for all three regions |
+| `.region-hero` | Overrides `.region-card` with a bolder border/shadow for the output |
+| `.unparsed-row` / `.unparsed-mark` | Amber styling for a parser-flagged row (chunk 7's data, styled here) |
+| `.field-message` | Styling for the inline servings warnings (chunk 10's data, styled here) |
+| `@media (max-width: 600px)` | Stacks ingredient rows vertically on narrow screens |
+
+There are no new JavaScript functions in this chunk — a styling and layout pass only, plus one
+structural wrap in `index.html` around an existing, already-working element.
+
+**Worth knowing:**
+
+- **`--color-rust-dark`, defined for `button:hover`, barely helps on the device the plan says matters
+  most.** `:hover` doesn't reliably trigger on touchscreens, so the one interactive-feedback colour
+  defined in this pass mostly benefits desktop users, not the phone users the chunk is designed around.
+- **The 600px breakpoint is a single undocumented number.** A reasonable guess for "phone vs not," but
+  nothing explains why 600 rather than 480 or 768, and there's no second breakpoint for a small tablet.
+- **"Start over" is styled identically to every other button.** Combined with chunk 8's lack of a
+  confirmation dialog, a destructive irreversible action looks exactly like harmless ones such as
+  "+ Add ingredient". Nothing visually signals that one of these erases data.
+- **This is the lowest-risk chunk of the five** — it touches no scaling, parsing, or storage logic, so
+  little here can silently produce a wrong number the way the earlier chunks can.
+
+**Three questions an interviewer could ask:**
+
+1. Why define `--color-rust` once in `:root` instead of just carefully keeping the same hex code
+   consistent everywhere? What specifically breaks the second approach that the first one fixes?
+2. The output section got wrapped in a new `<section>` element in this chunk. Why didn't that require
+   changing anything in `script.js`?
+3. `.region-hero` is layered on top of `.region-card` rather than written as one combined rule. Walk
+   through what properties `#scale-output` ends up with, and why two classes was the right call.
+
+---
+
+## Chunk 10 — Handle empty and invalid input
+
+**What it does for the user:**
+Blank or nonsense servings boxes no longer break the page. Before this chunk, clearing the "Makes ___
+servings" box made every ingredient display as `Infinity cups flour`; clearing *both* boxes produced
+`NaN cups flour`; and clearing just "Cooking for" silently scaled everything to zero, showing a recipe
+made entirely of zeroes with no explanation. Now an unusable servings box shows the recipe at its
+original unscaled amounts and prints a plain-language message next to the offending box — "Enter how
+many servings the recipe makes." — instead of garbage numbers.
+
+**What was actually broken, and why:**
+Two number boxes feed `calculateMultiplier`: "Makes N" is the divisor, "Cooking for N" the numerator
+(`wanted / makes`). A blank divisor gives `x / 0 = Infinity`. A blank numerator (which reads as `0`)
+gives `0 / x = 0`. Blank on both sides gives `0 / 0 = NaN` ("Not a Number"). Chunk 6's notes had
+already identified the root cause: `readEditorRow` (reading an ingredient's amount box) explicitly
+checks `value.trim() !== ""` before converting — but `readEditorIntoRecipe` (reading the *servings*
+box) had no equivalent check, just a bare `Number(...)`. **The same guard existed for one field and
+not the other, purely by omission.** The fix generalises a pattern that was only half applied.
+
+**How it works — tracing a blank "Makes ___ servings" box:**
+
+1. `readEditorIntoRecipe` now calls `readServingsInput(rawText)` instead of a bare `Number(...)`.
+2. `readServingsInput` trims the text. If empty, it returns `null` immediately — no division ever
+   happens with it. Otherwise it converts and passes the result through `isUsableServingsNumber`,
+   which requires the number to be finite (`Number.isFinite`, ruling out `Infinity`/`NaN`) **and**
+   greater than zero — so `0`, negatives, and `"abc"` are all rejected the same way as a blank box.
+3. `recipe.servings` is now `null`. `renderRecipe` calls `determineMultiplier`, which sees the `null`
+   and returns `1` — a no-op multiplier — so every amount is shown unchanged rather than divided by
+   zero.
+4. `renderServingsMessages` writes the plain-language message into the small `<span>` next to the box.
+5. `renderMultiplier` receives `canScale = false` and clears the `×N` display entirely, rather than
+   showing a misleading `×1` that would look like a deliberate real 1× scale.
+6. The "Originally serves N" line uses `servingsDisplayText`, which returns `"?"` rather than printing
+   the literal text `"null"`.
+
+**The pieces:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `isUsableServingsNumber(number)` | any number | `Number.isFinite(n) && n > 0` — one check catches blank, zero, negative and `NaN` alike | `true`/`false` |
+| `readServingsInput(rawText)` | raw text from a servings box | trims, returns `null` if empty or unusable, otherwise the number | a number, or `null` |
+| `determineMultiplier(recipeServings, servingsWanted)` | both values (each possibly `null`) | returns `1` if either is `null`; otherwise the real ratio | a multiplier |
+| `renderServingsMessages(…)` | both servings values | writes or clears the inline warning next to each box | nothing — writes to the page |
+| `servingsDisplayText(recipeServings)` | a servings value, possibly `null` | returns `"?"` for `null` | display text |
+| `isUsableAmount(number)` | an ingredient amount | requires finite and non-negative | `true`/`false` |
+| `isBlankIngredient(ingredient)` | one ingredient | `true` if amount, unit and name are all empty | `true`/`false` |
+| `removeBlankIngredients(ingredients)` | the ingredient array | filters out entirely blank rows before display | a filtered array |
+
+**Worth knowing:**
+
+- **`determineMultiplier` falls back to `1` (show unscaled), not to some other default.** A specific,
+  debatable choice: if "Cooking for" has a real number but "Makes" is blank, the recipe shows its
+  *original* amounts rather than guessing a scale. The user must fix "Makes" before anything scales,
+  even though they did type something into the other box.
+- **The fix was extended past servings to ingredient amounts too.** `isUsableAmount` now rejects
+  negative amounts — `-2 cups flour` didn't mean anything before either, but wasn't guarded against.
+  A negative amount is treated exactly like a blank one: `null`, pass through unscaled. The rejected
+  alternatives were flipping the sign or clamping to zero, both of which guess at intent.
+- **This was verified, not assumed.** The fix was checked by running the real `script.js` against a
+  Node stub DOM: blank/zero/negative in either box, both boxes blank, and all rows deleted — plus
+  regression checks that `0.5833 cups` still gives `9 tbsp 1 tsp`, `4.5 cups` still gives `4½ cups`,
+  `2-3 cloves` doubled still gives `4-6`, and saved recipes still round-trip through localStorage.
+- **All four invalid states show the same message.** Blank, zero, negative and non-numeric are not
+  distinguished — deliberate, to keep the message function short, but a user who typed `-2` gets no
+  hint that the minus sign specifically was the problem.
+
+**Three questions an interviewer could ask:**
+
+1. `readServingsInput` treats a blank box, a zero, a negative number and non-numeric text all the same
+   way — returning `null`. Why is one function with one check better here than three separate `if`
+   statements catching each case individually?
+2. If "Makes ___ servings" is blank but "Cooking for" has `8` in it, what does the user actually see?
+   Is that the most helpful thing the app could show?
+3. Point to what specifically caused the original `Infinity` bug in chunk 6's `readEditorIntoRecipe`,
+   and explain why the same bug never happened with an ingredient's amount box.
