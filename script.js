@@ -29,19 +29,25 @@ const exampleRecipe = {
 // taste" doesn't come out as "null  Salt and pepper to taste".
 function formatIngredientText(ingredient) {
   const textParts = [];
+  const hasRange = ingredient.amountMax !== null && ingredient.amountMax !== undefined;
 
-  if (ingredient.amount !== null) {
-    // Chunk 7: a range ("2-3 cloves") carries a second number, amountMax.
-    // Everything without a range leaves amountMax null/undefined and takes
-    // the plain single-amount path, unchanged from chunk 4.
-    if (ingredient.amountMax !== null && ingredient.amountMax !== undefined) {
-      textParts.push(formatAmount(ingredient.amount) + "-" + formatAmount(ingredient.amountMax));
-    } else {
-      textParts.push(formatAmount(ingredient.amount));
+  if (ingredient.amount !== null && hasRange) {
+    // Chunk 5's unit-aware formatAmount can break a single amount into more
+    // than one unit ("9 tbsp 1 tsp"), which would make a range unreadable
+    // ("9 tbsp 1 tsp - 2 tbsp cups"). So a range is never decomposed: each
+    // end is just snapped to a plain fraction with formatFractionAmount,
+    // and the unit is written once, after the whole range.
+    textParts.push(formatFractionAmount(ingredient.amount) + "-" + formatFractionAmount(ingredient.amountMax));
+    if (ingredient.unit !== "") {
+      textParts.push(ingredient.unit);
     }
-  }
-
-  if (ingredient.unit !== "") {
+  } else if (ingredient.amount !== null) {
+    // formatAmount decides the unit text itself as part of its result -
+    // sometimes it's the original unit ("2 cups"), sometimes decomposition
+    // has broken it into more than one ("9 tbsp 1 tsp") - so the unit isn't
+    // added again separately here.
+    textParts.push(formatAmount(ingredient.amount, ingredient.unit));
+  } else if (ingredient.unit !== "") {
     textParts.push(ingredient.unit);
   }
 
@@ -260,15 +266,306 @@ function formatWholeAndFraction(whole, symbol) {
   return whole + symbol;
 }
 
-// Top-level entry point: turns a raw scaled amount (a decimal number) into
-// the text an ingredient row displays. Unit-aware formatting — deciding
-// when to break an amount into smaller units instead of using a fraction —
-// is added in chunk 5.
-function formatAmount(amount) {
+// Turns a raw scaled amount (a decimal number) into a plain fraction, with
+// no unit and no decomposition. This was chunk 4's whole formatAmount
+// function; chunk 5 renamed it because it's now just one ingredient of a
+// bigger formatAmount(amount, unit) below — the piece that turns a decimal
+// into "2¼" is reused by several of the unit-aware paths.
+function formatFractionAmount(amount) {
   const { whole, leftover } = splitWholeAndLeftover(amount);
   const nearestFraction = snapToNiceFraction(leftover);
   const combined = combineWholeAndFraction(whole, nearestFraction);
   return formatWholeAndFraction(combined.whole, combined.symbol);
+}
+
+// Chunk 5: mixed-unit decomposition.
+//
+// A fraction alone isn't always the right answer. Scaling ⅓ cup by 1.75×
+// gives 0.5833… cups — nobody owns a 0.5833 cup measure, and the nearest
+// nice fraction (½ cup) quietly throws away 1⅓ tbsp. The fix is to convert
+// the amount down to teaspoons and build it back up from the largest unit
+// that fits, the same way a cash register makes change from the fewest,
+// largest coins first: as many cups as fit, then as many tbsp as fit in
+// what's left, then whatever tsp remain. See decomposeToUnits below for the
+// loop itself.
+//
+// Decomposing is not always an improvement, though — "4 cups 8 tbsp" is a
+// worse way to say 4.5 cups than "4½ cups". So the rule is fraction first,
+// decompose second: try snapping to a nice fraction, and only fall back to
+// decomposing when that fraction would be meaningfully wrong. See
+// isFractionGoodEnough below for exactly how "meaningfully wrong" is
+// measured.
+
+// classifyUnit sorts a unit word into one of four treatments. Each list
+// below is checked case-insensitively and tolerates a trailing period
+// ("tbsp."), the same cleanup the paste parser's looksLikeUnit uses.
+const volumeUnitNames = ["cup", "cups", "tbsp", "tablespoon", "tablespoons", "tsp", "teaspoon", "teaspoons"];
+const weightUnitNames = [
+  "g", "gram", "grams", "kg", "kilogram", "kilograms",
+  "ml", "milliliter", "milliliters", "millilitre", "millilitres",
+  "l", "liter", "liters", "litre", "litres",
+  "oz", "ounce", "ounces", "lb", "lbs", "pound", "pounds",
+];
+const countUnitNames = ["clove", "cloves", "can", "cans", "stick", "sticks", "slice", "slices", "pinch", "dash"];
+
+// Lowercases a unit and drops one trailing period, so "Tbsp.", "TBSP", and
+// "tbsp" all compare equal. A small helper of its own because several of
+// the functions below need this same cleanup before looking a unit up.
+function normalizeUnitText(unit) {
+  return unit.trim().toLowerCase().replace(/\.$/, "");
+}
+
+// Sorts a unit into "volume" (has a ladder to decompose down), "weight"
+// (rounds, never fractions), "count" (an honest fraction, including an
+// empty unit like "3 eggs"), or "none" (a unit this app doesn't recognize,
+// so nothing special is done to it).
+function classifyUnit(unit) {
+  const normalizedUnit = normalizeUnitText(unit);
+
+  if (volumeUnitNames.includes(normalizedUnit)) {
+    return "volume";
+  }
+  if (weightUnitNames.includes(normalizedUnit)) {
+    return "weight";
+  }
+  if (normalizedUnit === "") {
+    return "count";
+  }
+  if (countUnitNames.includes(normalizedUnit)) {
+    return "count";
+  }
+  return "none";
+}
+
+// The volume ladder: 1 cup = 16 tbsp, 1 tbsp = 3 tsp, so 1 cup = 48 tsp.
+// teaspoonsPerUnit is what toBaseUnit and decomposeToUnits convert with.
+// singularLabel/pluralLabel are the display text for that rung - tbsp and
+// tsp are already abbreviations and don't change with the count, but "cup"
+// becomes "cups".
+const volumeLadder = [
+  { teaspoonsPerUnit: 48, unitNames: ["cup", "cups"], singularLabel: "cup", pluralLabel: "cups" },
+  { teaspoonsPerUnit: 3, unitNames: ["tbsp", "tablespoon", "tablespoons"], singularLabel: "tbsp", pluralLabel: "tbsp" },
+  { teaspoonsPerUnit: 1, unitNames: ["tsp", "teaspoon", "teaspoons"], singularLabel: "tsp", pluralLabel: "tsp" },
+];
+
+// Looks up which ladder rung a unit belongs to, so the same rung data
+// (its size in teaspoons, its singular/plural text) can be reused by
+// toBaseUnit, canonicalVolumeLabel, and decomposeToUnits.
+function findLadderRungForUnit(normalizedUnit) {
+  for (const rung of volumeLadder) {
+    if (rung.unitNames.includes(normalizedUnit)) {
+      return rung;
+    }
+  }
+  return null;
+}
+
+// Picks singular or plural text for a rung based on the amount attached to
+// it. "1 cup" and "¼ cup" both read as singular, so the cutoff is "more
+// than one", not "not exactly one".
+function labelForRung(rung, amount) {
+  if (amount > 1) {
+    return rung.pluralLabel;
+  }
+  return rung.singularLabel;
+}
+
+// The display unit for an amount that's staying a plain fraction (not
+// decomposing) — e.g. "0.25 cups" should read as "¼ cup" (singular), even
+// though the unit was typed as the plural "cups".
+function canonicalVolumeLabel(unit, amount) {
+  const normalizedUnit = normalizeUnitText(unit);
+  const rung = findLadderRungForUnit(normalizedUnit);
+  return labelForRung(rung, amount);
+}
+
+// Converts an amount in any volume unit down to teaspoons, the ladder's
+// smallest rung. Everything else in the ladder - decomposing, measuring how
+// far off a fraction is - works in teaspoons so there's only one base unit
+// to reason about.
+function toBaseUnit(amount, unit) {
+  const normalizedUnit = normalizeUnitText(unit);
+  const rung = findLadderRungForUnit(normalizedUnit);
+  return amount * rung.teaspoonsPerUnit;
+}
+
+// Half a tablespoon, in teaspoons — the cutoff PLAN.md sets for "is a plain
+// fraction close enough, or does this amount need decomposing". A judgment
+// call, not a law of nature; it can be tuned.
+const fractionToleranceInTsp = 1.5;
+
+// Decides whether snapping this amount to a nice fraction (¼, ⅓, ½, ⅔, ¾)
+// is close enough to keep, or whether it's off by enough to be worth
+// decomposing instead.
+//
+// It works by finding the fraction snapToNiceFraction would pick, measuring
+// the gap between that fraction and the real amount, and converting that
+// gap into teaspoons so it can be compared against the half-tablespoon
+// tolerance regardless of what unit the ingredient uses.
+function isFractionGoodEnough(amount, unit) {
+  const { whole, leftover } = splitWholeAndLeftover(amount);
+  const nearestFraction = snapToNiceFraction(leftover);
+  const snappedAmount = whole + nearestFraction.value;
+
+  const errorInGivenUnit = Math.abs(amount - snappedAmount);
+  const errorInTsp = toBaseUnit(errorInGivenUnit, unit);
+
+  return errorInTsp <= fractionToleranceInTsp;
+}
+
+// The change-making loop. Takes an amount already converted to teaspoons
+// and walks the ladder from the largest rung (cup) to the smallest (tsp),
+// at each step taking as many whole units as fit and carrying whatever's
+// left down to the next, smaller rung — exactly how a cash register makes
+// change from the fewest, largest coins first. A rung that fits zero times
+// contributes nothing and is left out of the result, so the amount never
+// reads "0 cups 9 tbsp 1 tsp".
+//
+// The smallest rung (tsp) is handled differently: there's nothing smaller
+// left to carry a remainder into, so whatever teaspoons remain — whole or
+// fractional — become the last part as-is. dropNegligibleTail, below, is
+// what cleans up a fractional last part like 1.4 tsp into 1½ tsp.
+function decomposeToUnits(baseAmountInTsp) {
+  const parts = [];
+
+  // Floating-point arithmetic can leave tiny noise behind — 28 can come out
+  // as 27.999999999999996 — which would make the loop below undercount a
+  // unit by one. Rounding to six decimal places clears that noise without
+  // affecting any amount a real recipe would ever need.
+  let remainder = Math.round(baseAmountInTsp * 1000000) / 1000000;
+
+  for (let rungIndex = 0; rungIndex < volumeLadder.length; rungIndex++) {
+    const rung = volumeLadder[rungIndex];
+    const isSmallestUnit = rungIndex === volumeLadder.length - 1;
+
+    if (isSmallestUnit) {
+      if (remainder > 0) {
+        parts.push({ amount: remainder, unit: labelForRung(rung, remainder) });
+      }
+    } else {
+      const wholeUnitsHere = Math.floor(remainder / rung.teaspoonsPerUnit);
+      if (wholeUnitsHere > 0) {
+        parts.push({ amount: wholeUnitsHere, unit: labelForRung(rung, wholeUnitsHere) });
+        remainder = remainder - wholeUnitsHere * rung.teaspoonsPerUnit;
+      }
+    }
+  }
+
+  return parts;
+}
+
+// The finest amount a real measuring spoon set can measure — ⅛ tsp. Once a
+// decomposed amount's last part falls below this, it isn't worth showing.
+const negligibleAmountInTsp = 1 / 8;
+
+// Cleans up the last part decomposeToUnits produced, which is the only one
+// that can come out fractional (cup and tbsp remainders are always whole
+// numbers - decomposeToUnits carries them down instead of leaving them
+// fractional). Two things can happen to that last fractional part:
+// - too small to matter (under ⅛ tsp) → drop it entirely
+// - otherwise → snap it to a nice fraction, so it reads "1½ tsp" and never
+//   the raw decimal "1.4 tsp"
+function dropNegligibleTail(parts) {
+  if (parts.length === 0) {
+    return parts;
+  }
+
+  const lastPart = parts[parts.length - 1];
+
+  if (Number.isInteger(lastPart.amount)) {
+    return parts;
+  }
+
+  if (lastPart.amount < negligibleAmountInTsp) {
+    return parts.slice(0, parts.length - 1);
+  }
+
+  const snappedPart = { amount: formatFractionAmount(lastPart.amount), unit: lastPart.unit };
+  return parts.slice(0, parts.length - 1).concat([snappedPart]);
+}
+
+// Turns a list of decomposed parts, like [{amount: 9, unit: "tbsp"},
+// {amount: 1, unit: "tsp"}], into the text a cook reads: "9 tbsp 1 tsp".
+function formatParts(parts) {
+  const partTexts = [];
+  for (const part of parts) {
+    partTexts.push(part.amount + " " + part.unit);
+  }
+  return partTexts.join(" ");
+}
+
+// Rounds a weight to a whole number. Metric units multiply cleanly, so
+// there's no fraction step here the way there is for volume — "247.3g"
+// just becomes "247g".
+function roundWeight(number) {
+  return Math.round(number);
+}
+
+// Puts an already-formatted amount and a unit word together, leaving out
+// the unit entirely when there isn't one — "3 eggs" has no unit word beyond
+// the ingredient's name, so joinAmountAndUnit(amountText, "") is just the
+// amount text on its own.
+function joinAmountAndUnit(amountText, unit) {
+  if (unit === "") {
+    return amountText;
+  }
+  return amountText + " " + unit;
+}
+
+// Formats a volume amount: try a plain fraction first, and only decompose
+// down the ladder when that fraction would be meaningfully wrong.
+function formatVolumeAmount(amount, unit) {
+  if (isFractionGoodEnough(amount, unit)) {
+    const fractionText = formatFractionAmount(amount);
+    const unitLabel = canonicalVolumeLabel(unit, amount);
+    return joinAmountAndUnit(fractionText, unitLabel);
+  }
+
+  const baseAmountInTsp = toBaseUnit(amount, unit);
+  const parts = decomposeToUnits(baseAmountInTsp);
+  const finalParts = dropNegligibleTail(parts);
+  return formatParts(finalParts);
+}
+
+// Formats a weight amount: round it, no fractions.
+function formatWeightAmount(amount, unit) {
+  const roundedAmount = roundWeight(amount);
+  return joinAmountAndUnit(String(roundedAmount), unit);
+}
+
+// Formats a countable amount ("1⅓ eggs"): an honest fraction, same as
+// formatFractionAmount, with the unit (if there is one) added after. Never
+// forced to a whole number — the cook decides whether to round.
+function formatCountAmount(amount, unit) {
+  const fractionText = formatFractionAmount(amount);
+  return joinAmountAndUnit(fractionText, unit);
+}
+
+// Formats an amount whose unit this app doesn't recognize: no ladder to
+// decompose and no fraction rule that fits, so it's just a plain rounded
+// number next to whatever unit was typed.
+function formatUnknownAmount(amount, unit) {
+  const roundedAmount = roundToTwoDecimals(amount);
+  return joinAmountAndUnit(String(roundedAmount), unit);
+}
+
+// Top-level entry point: turns a raw scaled amount and its unit into the
+// text an ingredient row displays. Looks up what kind of unit this is, and
+// hands off to whichever formatting strategy fits it.
+function formatAmount(amount, unit) {
+  const unitType = classifyUnit(unit);
+
+  if (unitType === "volume") {
+    return formatVolumeAmount(amount, unit);
+  }
+  if (unitType === "weight") {
+    return formatWeightAmount(amount, unit);
+  }
+  if (unitType === "count") {
+    return formatCountAmount(amount, unit);
+  }
+
+  return formatUnknownAmount(amount, unit);
 }
 
 // Writes the current multiplier (e.g. "×1.5") into its small text spot
