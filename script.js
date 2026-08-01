@@ -653,6 +653,12 @@ function renderEditorRow(ingredient, index) {
   // into it.
   amountInput.type = "text";
   amountInput.className = "amount-input";
+  // The column headings above the rows are hidden on a narrow screen,
+  // where the three boxes stack vertically instead of sitting in a
+  // labelled row. Without a placeholder they would be three unlabelled
+  // boxes on a phone, which is where this app is meant to be used.
+  amountInput.placeholder = "Amount";
+  amountInput.setAttribute("aria-label", "Amount");
   amountInput.value = amountFieldText(ingredient);
   amountInput.addEventListener("input", handleEditorFieldChange);
   row.appendChild(amountInput);
@@ -660,6 +666,8 @@ function renderEditorRow(ingredient, index) {
   const unitInput = document.createElement("input");
   unitInput.type = "text";
   unitInput.className = "unit-input";
+  unitInput.placeholder = "Unit";
+  unitInput.setAttribute("aria-label", "Unit");
   unitInput.value = ingredient.unit;
   unitInput.addEventListener("input", handleEditorFieldChange);
   row.appendChild(unitInput);
@@ -667,6 +675,8 @@ function renderEditorRow(ingredient, index) {
   const nameInput = document.createElement("input");
   nameInput.type = "text";
   nameInput.className = "name-input";
+  nameInput.placeholder = "Ingredient";
+  nameInput.setAttribute("aria-label", "Ingredient");
   nameInput.value = ingredient.name;
   nameInput.addEventListener("input", handleEditorFieldChange);
   row.appendChild(nameInput);

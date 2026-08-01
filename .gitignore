@@ -6,3 +6,7 @@ PROJECT-GUIDE.md
 
 # macOS
 .DS_Store
+
+# Screenshots — may capture dock, tabs, or other personal context
+Screenshot*.png
+*.screenshot.png

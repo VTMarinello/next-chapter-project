@@ -28,8 +28,13 @@
           placeholder="Paste your recipe here…"
         ></textarea>
         <div class="paste-buttons">
-          <button type="button" id="paste-button">Paste from clipboard</button>
+          <!-- "Read recipe" is the primary action and is styled as such.
+               "Paste from clipboard" is only a shortcut, and may not work at
+               all over file://, so it deliberately looks secondary. -->
           <button type="button" id="read-recipe-button">Read recipe</button>
+          <button type="button" id="paste-button" class="button-secondary">
+            Paste from clipboard
+          </button>
         </div>
       </section>
 
@@ -42,11 +47,6 @@
              10 lines. Check the marked one." Empty until then. -->
         <p id="review-notice"></p>
 
-        <!-- Chunk 8: the recipe is saved in this browser automatically as it's
-             edited (see saveRecipes() in script.js). This button is the way
-             back to the pancake example for anyone who has saved a mess. -->
-        <button type="button" id="reset-button">Start over (reset to example)</button>
-
         <div class="editor-field">
           <label for="recipe-name">Recipe name</label>
           <input type="text" id="recipe-name" />
@@ -55,16 +55,40 @@
         <div class="editor-field">
           <label for="recipe-servings">Makes</label>
           <input type="number" id="recipe-servings" min="1" />
-          <span>servings</span>
+          <span class="field-suffix">servings</span>
           <!-- Chunk 10: filled in by script.js when this box is blank, zero,
                negative, or not a number. Empty the rest of the time. -->
           <span id="recipe-servings-message" class="field-message"></span>
         </div>
 
+        <!-- Column headings for the rows script.js draws below. Static markup
+             rather than something JS generates, because they never change and
+             the rows themselves get redrawn constantly. aria-hidden because
+             each generated input already carries its own accessible label. -->
+        <div class="ingredient-heads" aria-hidden="true">
+          <span>Amount</span>
+          <span>Unit</span>
+          <span>Ingredient</span>
+        </div>
+
         <!-- Filled in by script.js with one row per ingredient -->
         <div id="ingredient-rows"></div>
 
-        <button type="button" id="add-ingredient-button">+ Add ingredient</button>
+        <button type="button" id="add-ingredient-button" class="button-secondary">
+          + Add ingredient
+        </button>
+
+        <!-- Chunk 8: the recipe is saved in this browser automatically as it's
+             edited (see saveRecipes() in script.js). This button is the way
+             back to the pancake example for anyone who has saved a mess.
+             Deliberately placed last and styled quietly: it is the one
+             irreversible action on the page, so it should not sit in the
+             position the eye lands on first. -->
+        <div class="danger-zone">
+          <button type="button" id="reset-button" class="button-danger">
+            Start over (reset to example)
+          </button>
+        </div>
       </section>
 
       <!-- Region 3: the scaled output. Wraps the "cooking for" control and
