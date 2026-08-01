@@ -40,7 +40,8 @@ That alone proves the idea works. Everything after it is convenience.
 4. Show scaled amounts in a form a human would use — `¾ cup`, or `9 tbsp 1 tsp`, never `0.5833 cups`
 5. Let the user enter their own recipes, so the app is useful to someone other than the author
 6. Paste a recipe as plain text and have it broken into ingredient rows automatically
-7. Remember recipes between visits, so they aren't re-entered every time
+7. Review and edit every ingredient row before scaling, however the recipe got there
+8. Remember recipes between visits, so they aren't re-entered every time
 
 ## Stretch Features
 
@@ -76,10 +77,10 @@ everything before it is groundwork, everything after is making it genuinely usab
 | 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | not started | `Scale ingredients by servings` | ☐ |
 | 4 | Nice fractions — turn `0.75` into `¾` by snapping to the nearest amount a cook can actually measure | not started | `Show amounts as fractions` | ☐ |
 | 5 | **Mixed-unit decomposition.** `0.5833 cups` → `9 tbsp 1 tsp`. The change-making ladder, plus the rule deciding when a plain fraction is good enough | not started | `Break amounts into mixed units` | ☐ |
-| 6 | A form to add your own recipe — name, servings, ingredient rows. Also the correction UI the parser depends on | not started | `Add recipe form` | ☐ |
-| 7 | **Paste-and-parse.** Drop in recipe text, regex splits each line into amount / unit / ingredient and fills the form. Unparsed lines flagged for manual fixing | not started | `Parse pasted recipe text` | ☐ |
+| 6 | **The editor** — name, servings, and a list of editable ingredient rows. Add, edit, delete a row. This is the single shared surface both entry paths lead to | not started | `Add recipe editor` | ☐ |
+| 7 | **Paste-and-parse.** Drop in recipe text, regex fills the editor rows, review notice reports what parsed and flags what didn't | not started | `Parse pasted recipe text` | ☐ |
 | 8 | Save recipes in the browser so they survive a refresh | not started | `Save recipes in the browser` | ☐ |
-| 9 | Styling and layout — readable on a phone, since that's where a recipe gets read | not started | `Style the layout` | ☐ |
+| 9 | Styling and layout — the three regions visually distinct, editor rows stacking on a phone, scaled output large and readable at the counter | not started | `Style the layout` | ☐ |
 | 10 | Empty states and invalid input — zero servings, negative numbers, blank fields, no recipes yet | not started | `Handle empty and invalid input` | ☐ |
 
 Chunks 6 and 7 are in that order deliberately: the parser's output lands in the form, and the form
@@ -207,6 +208,85 @@ thirteen.
 
 ---
 
+## Page architecture and flow
+
+Three regions, top to bottom, in the order a person moves through them.
+
+```
+┌─ 1. ADD A RECIPE ─────────────────────────────┐
+│  [ paste your recipe here…              ]     │  ← textarea, click and paste
+│  [ Paste from clipboard ]  [ Read recipe ]    │
+│  ─────────────── or ───────────────            │
+│  [ + Enter ingredients manually ]              │
+└────────────────────────────────────────────────┘
+┌─ 2. CHECK IT OVER ────────────────────────────┐
+│  Read 12 of 13 lines. Check the marked one.   │  ← review notice
+│  Name  [ Pancakes          ]                  │
+│  Makes [ 4 ] servings                          │
+│                                                │
+│  amt   unit    ingredient              │       │
+│  [2  ] [cups] [ flour              ]  [×]     │  ← every row editable
+│  [1.5] [cups] [ milk               ]  [×]     │
+│  [   ] [    ] [ 1 (14 oz) can toms  ] [×] ⚠  │  ← unparsed, flagged
+│  [ + Add ingredient ]                          │
+└────────────────────────────────────────────────┘
+┌─ 3. SCALE IT ─────────────────────────────────┐
+│  Cooking for [ 6 ] people        (×1.5)        │
+│                                                │
+│  3 cups flour                                  │  ← clean, large, read-only
+│  2¼ cups milk                                  │
+│  1 (14 oz) can toms        (not scaled)        │
+└────────────────────────────────────────────────┘
+```
+
+### The one architectural rule
+
+**Both entry paths produce the same thing.** Pasting doesn't build a different kind of recipe than
+typing does — the parser's only job is to *pre-fill the editor rows*. A pasted recipe and a
+hand-typed one are indistinguishable by the time they reach region 2.
+
+That matters for three reasons:
+
+1. **The parser is allowed to be wrong.** Its mistakes are just wrong values in editable fields,
+   which the user fixes the same way they'd fix a typo of their own.
+2. **Only one editor to build, style, and debug.** Chunk 6 builds it; chunk 7 fills it.
+3. **Only one path into scaling.** Region 3 doesn't know or care where the recipe came from.
+
+This is why chunk 6 comes before chunk 7 — see the Decisions table.
+
+### Region 2 is a checkpoint, not a formality
+
+The user is prompted to look the recipe over before scaling, because that's the moment when
+correcting a mis-parse is cheap. The review notice states plainly what happened —
+*"Read 12 of 13 lines"* — rather than silently succeeding.
+
+Unparsed lines are **marked, never removed**. The original text stays in the ingredient field so
+there's something to correct rather than something to retype. The mark is informative, not an
+error: nothing is blocked, and a user who doesn't care can scale anyway and simply ignore the line
+that didn't scale.
+
+### UX rules for this flow
+
+- **Editing is inline.** No modals, no separate edit screen — click the field, change it.
+- **The scaled output is visually distinct from the editor**: bigger type, read-only, no input
+  boxes. You're reading it at the counter, not filling it in.
+- **Unscalable lines carry a quiet note** (`not scaled`) in the output, so "salt to taste" doesn't
+  look like a bug.
+- **Nothing blocks.** Bad or missing input degrades the output; it never stops the app.
+- **Phone first.** A recipe is read on a phone in a kitchen. Rows stack rather than scroll
+  sideways.
+
+### One technical caveat on the paste button
+
+Reading the clipboard programmatically (`navigator.clipboard.readText()`) needs user permission
+and a secure context. It works on the GitHub Pages URL, which is HTTPS, but may silently fail when
+`index.html` is opened directly from disk via `file://`.
+
+So the textarea is the primary path and always works; the button is a convenience that falls back
+to focusing the textarea if the read is refused. **Do not build the button as the only way in.**
+
+---
+
 ## Function breakdown
 
 Deliberately fine-grained — more functions than a working programmer would write, each small
@@ -247,13 +327,36 @@ enough to explain out loud in a sentence. See the code style note in `CLAUDE.md`
 | `formatParts(parts)` | `[5 cups, 2 tbsp]` → `"5 cups 2 tbsp"` |
 | `formatAmount(amount, unit)` | Top level — picks the strategy above |
 
-**Display & storage**
+**Input** — region 1, getting text in
 
 | Function | Job |
 |---|---|
-| `renderRecipe(recipe, servings)` | Draw everything |
-| `renderIngredientRow(ing)` | One line of the list |
-| `readFormIntoRecipe()` | Form fields → recipe object |
+| `handlePasteButton()` | Clipboard read, falling back to focusing the textarea |
+| `loadPastedText(text)` | Parse the blob → build a recipe → fill the editor |
+| `startEmptyRecipe()` | The "enter manually" path — one blank row |
+
+**Editor** — region 2, the shared editable surface
+
+| Function | Job |
+|---|---|
+| `renderEditor(recipe)` | Draw name, servings, and all rows |
+| `renderEditorRow(ing, index)` | One editable row |
+| `readEditorIntoRecipe()` | Read every field back into a recipe object |
+| `addEmptyRow()` / `deleteRow(index)` | Row management |
+| `countUnparsed(recipe)` | How many lines need a look |
+| `renderReviewNotice(total, unparsed)` | "Read 12 of 13 lines" |
+
+**Output** — region 3, the scaled result
+
+| Function | Job |
+|---|---|
+| `renderScaledRecipe(recipe, servings)` | Draw the clean read-only list |
+| `renderScaledLine(ing, multiplier)` | One output line, formatted |
+
+**Storage**
+
+| Function | Job |
+|---|---|
 | `saveRecipes()` / `loadRecipes()` | Browser storage |
 
 ---
@@ -273,3 +376,6 @@ enough to explain out loud in a sentence. See the code style note in `CLAUDE.md`
 | 2026-07-31 | Countable items show honest fractions — `1⅓ eggs` | Considered forcing whole numbers and rejected it. The app's job is correct arithmetic; how much egg to waste is the cook's call, not the program's. |
 | 2026-07-31 | Unparsed lines are flagged, never dropped | Perfect parsing of non-standard recipe text is impossible and AI features are forbidden by the course. Designing so imperfection is cheap to correct beats chasing accuracy that can't be reached. |
 | 2026-07-31 | Form built before parser (chunk 6 before 7) | The parser's output lands in the form, and the form is where mis-parses get fixed. Parser first would leave nowhere to correct its mistakes. |
+| 2026-07-31 | Paste and manual entry converge on one editor | A pasted recipe is indistinguishable from a typed one by the time it reaches the editor. One surface to build and debug, one path into scaling, and it's what makes the parser safe to be wrong. |
+| 2026-07-31 | Review step between entry and scaling | Correcting a mis-parse is cheapest before scaling, and stating "read 12 of 13 lines" is more honest than silently succeeding. Informative, not blocking — the user can scale anyway. |
+| 2026-07-31 | Textarea primary, paste button secondary | `navigator.clipboard.readText()` needs permission and a secure context; it works on the HTTPS Pages URL but may fail over `file://`. The button is a convenience with a fallback, never the only way in. |
