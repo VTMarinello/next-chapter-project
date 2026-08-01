@@ -1410,11 +1410,68 @@ function renderIngredientList(container, ingredients) {
   }
 
   const ingredientList = document.createElement("ul");
-  for (const ingredient of displayableIngredients) {
-    const row = renderIngredientRow(ingredient);
+  for (let index = 0; index < displayableIngredients.length; index++) {
+    const row = renderIngredientRow(displayableIngredients[index]);
+    // Its position in the list, handed to CSS so each line can be delayed a
+    // little more than the one above it when the scale animation plays. CSS
+    // can't count elements for itself, so the number has to come from here.
+    row.style.setProperty("--i", index);
     ingredientList.appendChild(row);
   }
   container.appendChild(ingredientList);
+}
+
+// ---------------------------------------------------------------------------
+// The "Scale it" animation.
+//
+// Amounts already update live on every keystroke, so this button isn't what
+// makes scaling happen — it's a deliberate moment where the change is *shown*.
+// It replays the scene of one apple becoming a tableful and re-deals the
+// ingredient list underneath it.
+//
+// All the movement itself lives in style.css as keyframes. The only job here
+// is switching one class on and off at the right times, which keeps the
+// animation something you can read in a stylesheet rather than something
+// buried in JavaScript.
+// ---------------------------------------------------------------------------
+
+// How long the whole sequence runs, in milliseconds. A little longer than the
+// CSS animations, so the last staggered row has finished before the class is
+// taken off again.
+const scaleAnimationMs = 1800;
+
+// Remembers the timer between clicks. Pressing the button again part-way
+// through has to cancel the pending cleanup — otherwise the earlier timer
+// would strip the class off midway through the new run and freeze it
+// half-played.
+let scaleAnimationTimer = null;
+
+function playScaleAnimation() {
+  const outputPanel = document.getElementById("scale-output");
+
+  if (scaleAnimationTimer !== null) {
+    clearTimeout(scaleAnimationTimer);
+  }
+
+  // Removing the class and adding it straight back does nothing on its own:
+  // the browser batches style changes, sees the class present both before and
+  // after, and concludes nothing changed — so the animation never restarts.
+  // Reading a layout property in between forces the removal to be applied
+  // first, which is what lets the animation start over from the beginning.
+  outputPanel.classList.remove("is-scaling");
+  void outputPanel.offsetWidth;
+  outputPanel.classList.add("is-scaling");
+
+  scaleAnimationTimer = setTimeout(function () {
+    outputPanel.classList.remove("is-scaling");
+    scaleAnimationTimer = null;
+  }, scaleAnimationMs);
+}
+
+function handleScaleButton() {
+  // Redraw first, so the rows the animation staggers in are the current ones.
+  updateScaledOutput();
+  playScaleAnimation();
 }
 
 // Pre-fills the editor with a saved recipe if this browser already has one,
@@ -1450,6 +1507,9 @@ readRecipeButton.addEventListener("click", handleReadRecipeButton);
 
 const resetButton = document.getElementById("reset-button");
 resetButton.addEventListener("click", handleResetButton);
+
+const scaleButton = document.getElementById("scale-button");
+scaleButton.addEventListener("click", handleScaleButton);
 
 // Draws the output for the first time, using the pre-filled editor and
 // whatever the "cooking for" input starts at.

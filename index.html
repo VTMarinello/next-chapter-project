@@ -10,8 +10,11 @@
 
   <body>
     <header class="page-header">
+      <p class="eyebrow">Kitchen maths, done for you</p>
       <h1>Recipe Scaler</h1>
-      <p>Cook any recipe for any number of people, in amounts you can actually measure.</p>
+      <p class="lede">
+        Cook any recipe for any number of people — in amounts you can actually measure.
+      </p>
     </header>
 
     <!-- Two columns on a wide screen: the recipe you're editing on the left,
@@ -20,9 +23,6 @@
     <main class="workspace">
       <!-- ============ LEFT: the recipe you're working on ============ -->
       <div class="column-work">
-        <!-- Region 2 in PLAN.md's flow: the editor. The single surface a
-             recipe ends up in, whether it was typed or pasted. Pre-filled by
-             script.js with exampleRecipe on page load. -->
         <section id="editor" class="panel">
           <div class="panel-head">
             <h2 class="section-label">Your recipe</h2>
@@ -66,13 +66,12 @@
           <!-- Region 1 in PLAN.md's flow, folded away by default. It used to
                be a large permanently-open textarea at the top of the page —
                the biggest and emptiest thing on screen, above the content it
-               feeds. Collapsed, it stays one click away without dominating.
-               <details> is plain HTML, so this needs no JavaScript. -->
+               feeds. <details> is plain HTML, so this needs no JavaScript. -->
           <details class="paste-drawer" id="paste-area">
             <summary>Paste a recipe instead</summary>
             <div class="paste-drawer-body">
               <p class="hint">
-                Paste your ingredient list and each line becomes a row above.
+                Paste an ingredient list and each line becomes a row above.
                 Anything it can't read is flagged, never dropped.
               </p>
               <textarea
@@ -92,10 +91,8 @@
             </div>
           </details>
 
-          <!-- Deliberately last and styled quietly: this is the one
-               irreversible action on the page, so it should not sit where the
-               eye lands first. It used to be a large filled button at the top
-               of this panel. -->
+          <!-- Deliberately last and styled quietly: the one irreversible
+               action on the page shouldn't sit where the eye lands first. -->
           <div class="danger-zone">
             <button type="button" id="reset-button" class="button-danger">
               Start over
@@ -106,10 +103,105 @@
 
       <!-- ============ RIGHT: the scaled result ============ -->
       <div class="column-result">
-        <!-- Region 3: sticky, so the result stays on screen while you edit
-             the recipe beside it. This is the part read at a counter while
-             cooking, so it gets the most typographic weight on the page. -->
         <section id="scale-output" class="panel panel-result">
+          <!-- ---------- The animated scene ----------
+               One apple on a table becomes a tableful. It's the app's whole
+               idea in one picture, and it plays when "Scale it" is pressed.
+
+               Everything below is plain SVG plus CSS keyframes — no
+               animation library. The original sketch for this used GSAP from
+               a CDN, but CLAUDE.md rules out frameworks precisely because
+               every line has to be explainable out loud, and a timeline
+               library would be a black box. The moving parts are just three
+               keyframe animations (pop, flash, stir) started by adding one
+               class; see .is-scaling in style.css.
+
+               --i on each apple is its position in the stagger. CSS
+               multiplies it by a step to work out that apple's delay, so the
+               table fills in one by one rather than all at once. -->
+          <div class="result-stage" aria-hidden="true">
+            <svg viewBox="80 140 640 300" class="scene" role="presentation">
+              <defs>
+                <!-- Artwork only. These path strings are the drawn shape of
+                     an apple — nothing here is logic. -->
+                <g id="apple">
+                  <g transform="scale(0.08) translate(-518, -764)">
+                    <path d="M543.74 255c210.2-42.94 322.79 28.73 346.37 214C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0C178.08 903 132.15 652.15 146.43 469 170 283.73 282.6 212.06 492.8 255c5.86 1.49 15.78 1.55 20.37 0 14.83 1.54 24.71 1.48 30.57 0z" fill="#FFFFFF" />
+                    <path d="M885.45 439.64q2.73 14.16 4.66 29.34C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0c-88.34-8.86-153.15-40.47-200-85.36-20.43-72.24-23.51-150.22-18.17-218.74 23.58-185.26 136.17-256.93 346.37-214 5.86 1.49 15.78 1.55 20.37 0 14.78 1.55 24.7 1.49 30.56 0 110.33-22.54 193.77-13.5 251.57 27z" fill="#FFC6C6" />
+                    <path d="M687.43 244.66c118.81 12.08 185.2 87 202.68 224.32C904.38 652.15 874 930.76 563 930.76q-35.73-0.9-108.27 0c-58-5.82-105.92-21.46-145.22-44.24 223.8 24.26 333.76-44.77 395.87-262.59 32.82-115.12 28.75-256-18-379.27z" fill="#FF9368" />
+                    <path d="M405.59 339.46a135.21 61.95 0 1 0 270.42 0 135.21 61.95 0 1 0-270.42 0Z" fill="#FFC6C6" />
+                    <path d="M453.84 951.26l-1.15-0.12c-68.87-6.91-128.3-27.68-176.65-61.74C233 859 198.34 818 173.14 767.27c-50.37-101.34-53.43-219-47.13-299.87l0.1-1c5.83-45.76 17.1-85.6 33.52-118.42 17-33.9 39.88-61.34 68.11-81.56 31.69-22.69 70.78-36.75 116.17-41.8 44.05-4.9 95.52-1.43 153 10.31l0.93 0.21a31.48 31.48 0 0 0 9.21 0.31l3.82-1.29 4.45 0.47c17.13 1.79 22.49 0.75 23.4 0.52l0.93-0.21c57.46-11.74 108.94-15.21 153-10.31 45.39 5 84.47 19.11 116.17 41.8 28.18 20.21 51.13 47.65 68.09 81.57 16.41 32.81 27.69 72.65 33.52 118.42l0.1 1c9.32 119.51 0.32 283.71-95.45 387.23C755.77 918.74 671 951.24 563 951.24h-0.52c-23.45-0.59-59.62-0.59-107.5 0zM518 909.84c18.15 0 33.27 0.15 45.25 0.45 50.49 0 95.42-7.82 133.56-23.18 34.28-13.8 63.95-34.09 88.19-60.3 47.27-51.1 100.32-154.3 84.72-355.73-5.26-41-15.17-76.21-29.45-104.77-13.94-27.88-32.56-50.31-55.27-66.58-25.92-18.56-58.51-30.13-96.85-34.4-39.7-4.42-86.76-1.17-139.87 9.65-8 1.92-18.5 2.15-33.69 0.73a70 70 0 0 1-26.22-0.73c-53.12-10.82-100.18-14.07-139.88-9.65-38.34 4.26-70.93 15.84-96.85 34.4-22.76 16.3-41.38 38.7-55.33 66.58-14.29 28.56-24.2 63.81-29.45 104.77-3.8 49.11-2.73 96.45 3.17 140.73 6.89 51.73 20.3 97.9 39.85 137.23 47.26 95.07 130 149.31 245.83 161.24 23.58-0.28 44.41-0.44 62.29-0.44z" fill="#1a1a1a" />
+                    <path d="M516.59 388.26c-36.82 0-73.57-14.47-109.24-43a22.53 22.53 0 1 1 28.15-35.18c55.32 44.27 106.86 44.27 162.18 0a22.53 22.53 0 1 1 28.15 35.18c-35.66 28.53-72.42 43-109.24 43z" fill="#1a1a1a" />
+                    <path d="M518.28 363.59a22.55 22.55 0 0 1-21.66-28.77c32.47-112.64 71.48-185.13 119.27-221.62a22.53 22.53 0 1 1 27.35 35.8c-39.27 30-74 96.71-103.32 198.29a22.54 22.54 0 0 1-21.64 16.3z" fill="#1a1a1a" />
+                    <path d="M412.75 277.52q87.12 0 157.75-78.84-70.63-78.84-157.75-78.84T255 198.68q70.62 78.84 157.75 78.84z" fill="#89D66D" />
+                    <path d="M416.86 298c-63.88 0-122.09-28.82-173-85.66l-12.24-13.67L243.85 185c50.92-56.84 109.12-85.65 173-85.65s122.09 28.82 173 85.65l12.24 13.67-12.24 13.67C538.95 269.18 480.74 298 416.86 298z m-129.48-99.32c17.84 17.55 36.49 31.25 55.63 40.81a164.13 164.13 0 0 0 147.69 0c19.14-9.57 37.79-23.26 55.63-40.81-17.84-17.55-36.49-31.25-55.63-40.81a164.13 164.13 0 0 0-147.69 0c-19.13 9.56-37.79 23.25-55.63 40.81z" fill="#1a1a1a" />
+                    <path d="M396.72 182.16h143.35a15.36 15.36 0 0 1 15.36 15.36 15.36 15.36 0 0 1-15.36 15.36H396.72a15.36 15.36 0 0 1-15.36-15.36 15.36 15.36 0 0 1 15.36-15.36z" fill="#015200" />
+                  </g>
+                </g>
+
+                <!-- A four-pointed sparkle, drawn with curves so the points
+                     taper rather than coming to hard corners. -->
+                <g id="sparkle-asset">
+                  <path d="M 0,-15 Q 2,-2 15,0 Q 2,2 0,15 Q -2,2 -15,0 Q -2,-2 0,-15 Z" fill="#F5C24C" />
+                </g>
+              </defs>
+
+              <!-- The table the apples sit on -->
+              <g id="table">
+                <rect x="150" y="345" width="20" height="100" rx="3" fill="#5c3418" />
+                <rect x="630" y="345" width="20" height="100" rx="3" fill="#5c3418" />
+                <rect x="100" y="320" width="600" height="25" rx="5" fill="#a05a2c" />
+                <rect x="110" y="328" width="580" height="2" rx="1" fill="#733e1c" opacity="0.6" />
+                <rect x="130" y="335" width="520" height="2" rx="1" fill="#733e1c" opacity="0.6" />
+                <rect x="105" y="340" width="150" height="2" rx="1" fill="#733e1c" opacity="0.4" />
+                <rect x="450" y="340" width="220" height="2" rx="1" fill="#733e1c" opacity="0.4" />
+                <rect x="100" y="320" width="600" height="5" rx="2" fill="#c97a3e" />
+              </g>
+
+              <!-- The apples that appear when the recipe is scaled up.
+                   Each is two nested groups on purpose: the outer one holds
+                   the position (an SVG transform attribute), the inner one is
+                   what CSS scales. A CSS transform would otherwise replace
+                   the positioning transform outright and stack every apple at
+                   the origin. -->
+              <g id="cloned-items">
+                <g transform="translate(200, 315)"><g class="pop" style="--i: 0"><use href="#apple" /></g></g>
+                <g transform="translate(280, 315)"><g class="pop" style="--i: 3"><use href="#apple" /></g></g>
+                <g transform="translate(360, 315)"><g class="pop" style="--i: 6"><use href="#apple" /></g></g>
+                <g transform="translate(440, 315)"><g class="pop" style="--i: 1"><use href="#apple" /></g></g>
+                <g transform="translate(520, 315)"><g class="pop" style="--i: 8"><use href="#apple" /></g></g>
+                <g transform="translate(600, 315)"><g class="pop" style="--i: 4"><use href="#apple" /></g></g>
+                <g transform="translate(240, 280)"><g class="pop" style="--i: 9"><use href="#apple" /></g></g>
+                <g transform="translate(320, 280)"><g class="pop" style="--i: 2"><use href="#apple" /></g></g>
+                <g transform="translate(480, 280)"><g class="pop" style="--i: 7"><use href="#apple" /></g></g>
+                <g transform="translate(560, 280)"><g class="pop" style="--i: 5"><use href="#apple" /></g></g>
+              </g>
+
+              <!-- Sparkles, scattered above the table -->
+              <g id="sparkles-container">
+                <g transform="translate(250, 220)"><g class="sparkle" style="--i: 0"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(350, 180)"><g class="sparkle" style="--i: 3"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(450, 200)"><g class="sparkle" style="--i: 1"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(550, 170)"><g class="sparkle" style="--i: 4"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(310, 250)"><g class="sparkle" style="--i: 2"><use href="#sparkle-asset" /></g></g>
+              </g>
+
+              <!-- The one apple that's always there, before any scaling -->
+              <g transform="translate(400, 310)">
+                <use href="#apple" />
+              </g>
+
+              <!-- The spoon that swings across as the apples appear -->
+              <g transform="translate(600, 180)">
+                <g class="stir">
+                  <rect x="-180" y="-8" width="180" height="16" rx="8" fill="#d39e6a" />
+                  <ellipse cx="-200" cy="0" rx="35" ry="22" fill="#c48b56" />
+                  <ellipse cx="-200" cy="0" rx="25" ry="14" fill="#a67142" />
+                </g>
+              </g>
+            </svg>
+          </div>
+
           <div class="scale-control">
             <label for="servings-wanted">Cooking for</label>
             <input type="number" id="servings-wanted" value="4" min="1" />
@@ -117,13 +209,20 @@
             <!-- Filled in by script.js with something like "×1.5", and left
                  empty when the multiplier is exactly 1. -->
             <span id="multiplier-display"></span>
-            <!-- Chunk 10: filled in by script.js when this box is blank, zero,
-                 negative, or not a number. Empty the rest of the time. -->
-            <span id="servings-wanted-message" class="field-message"></span>
           </div>
 
-          <!-- Starts empty on purpose. script.js fills this in with the
-               scaled recipe. -->
+          <!-- Chunk 10: filled in by script.js when the box above is blank,
+               zero, negative, or not a number. Empty the rest of the time. -->
+          <p id="servings-wanted-message" class="field-message"></p>
+
+          <!-- Amounts already update live as you type. This replays the
+               scene and re-deals the list, so there's a deliberate moment
+               where the change is shown rather than just happening. -->
+          <div class="scale-action">
+            <button type="button" id="scale-button">Scale it</button>
+          </div>
+
+          <!-- Starts empty on purpose. script.js fills this in. -->
           <div id="recipe"></div>
         </section>
       </div>
