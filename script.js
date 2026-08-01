@@ -958,6 +958,15 @@ function slashFractionToNumber(text) {
   const parts = text.split("/");
   const numerator = Number(parts[0]);
   const denominator = Number(parts[1]);
+
+  // "1/0" would give Infinity and "0/0" would give NaN, and either would flow
+  // all the way through scaling to display as "Infinity cups flour". A
+  // fraction over zero isn't a quantity, so it's treated as no amount at all
+  // and the line passes through unscaled.
+  if (denominator === 0) {
+    return null;
+  }
+
   return numerator / denominator;
 }
 
@@ -965,7 +974,11 @@ function slashFractionToNumber(text) {
 // space; each side is handled by the function that already knows how to
 // read it.
 function amountTextToNumberMixed(text) {
-  const parts = text.split(" ");
+  // Split on any RUN of whitespace, not a single literal space. Pasted
+  // recipes routinely have doubled spaces or a tab between the whole number
+  // and the fraction, and splitting on one space left an empty string in the
+  // middle — "1  1/2" produced NaN, which then displayed as "NaN cups flour".
+  const parts = text.trim().split(/\s+/);
   const whole = Number(parts[0]);
   const fractionValue = slashFractionToNumber(parts[1]);
   return whole + fractionValue;
@@ -984,8 +997,24 @@ function amountTextToNumberWithFractionChar(text, fractionChar) {
 
 // Normalises any of the amount text shapes the parser can hand it — "2",
 // "1.5", "1/2", "1 1/2", "½" — into a plain number.
+// Anything that isn't a usable positive-or-zero finite number is treated as
+// "no amount". One guard here means every caller downstream can trust that an
+// amount is either null or a real number — rather than each of them having to
+// check for NaN and Infinity separately.
+function usableAmountOrNull(value) {
+  if (value === null || !Number.isFinite(value) || value < 0) {
+    return null;
+  }
+
+  return value;
+}
+
 function amountTextToNumber(text) {
-  if (text.includes(" ")) {
+  // Test for ANY whitespace, not a literal space. The pattern that matched
+  // this text in the first place allows a tab between the whole number and
+  // the fraction, so checking only for " " sent "1<tab>1/2" down the plain
+  // slash-fraction path, which split it into "1<tab>1" and "2" and gave NaN.
+  if (/\s/.test(text)) {
     return amountTextToNumberMixed(text);
   }
   if (text.includes("/")) {
@@ -996,6 +1025,12 @@ function amountTextToNumber(text) {
     return amountTextToNumberWithFractionChar(text, fractionChar);
   }
   return Number(text);
+}
+
+// Every route into a parsed amount goes through here, so NaN and Infinity
+// can't reach the rest of the app.
+function safeAmountTextToNumber(text) {
+  return usableAmountOrNull(amountTextToNumber(text));
 }
 
 // Matches a range like "2-3" or "2 - 3" at the very start of a string: one
@@ -1251,6 +1286,21 @@ function saveRecipes() {
 // Reads the saved recipe back out of localStorage. Returns null if there
 // isn't one - either nothing has been saved yet, or the saved value
 // couldn't be used.
+// Is this really a recipe object? Only the parts the app actually reads are
+// checked — a name it can put in a box, a servings value, and an array of
+// ingredients to loop over.
+function looksLikeARecipe(value) {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return false;
+  }
+
+  if (!Array.isArray(value.ingredients)) {
+    return false;
+  }
+
+  return true;
+}
+
 function loadRecipes() {
   const recipeText = localStorage.getItem(RECIPE_STORAGE_KEY);
 
@@ -1260,7 +1310,18 @@ function loadRecipes() {
   }
 
   try {
-    return JSON.parse(recipeText);
+    const parsed = JSON.parse(recipeText);
+
+    // JSON.parse succeeding only means the text was valid JSON — it says
+    // nothing about the SHAPE. A stored "[]", "123" or {"name":"x"} all parse
+    // fine and then crash renderEditor on the very next line, which fails the
+    // whole page load: a blank screen with no reset button to recover with.
+    // Checking the shape here is what makes the fallback actually reliable.
+    if (!looksLikeARecipe(parsed)) {
+      return null;
+    }
+
+    return parsed;
   } catch (error) {
     // JSON.parse throws on text that isn't valid JSON. That could happen if
     // someone hand-edits localStorage in devtools, or a saved value was
@@ -1423,6 +1484,70 @@ function renderIngredientList(container, ingredients) {
     ingredientList.appendChild(row);
   }
   container.appendChild(ingredientList);
+}
+
+// ---------------------------------------------------------------------------
+// Whole-number-only inputs.
+//
+// A <input type="number"> is looser than it looks: the browser accepts "e"
+// (as in 1e3), "+", "-" and "." as legitimate number characters, so a
+// servings box would happily take "4.5", "-2" or "1e9". Worse, when the
+// contents are invalid the element reports .value as an empty string, so you
+// can't read what was typed in order to strip it back out.
+//
+// So the filtering happens at the keyboard instead: refuse the keystroke
+// before it lands. The spinner arrows still work — they step by whole
+// numbers because of step="1" — and a pasted value is cleaned separately.
+// ---------------------------------------------------------------------------
+
+// Keys that must always work: editing, navigating, submitting, and anything
+// held with a modifier (copy, paste, select-all).
+const alwaysAllowedKeys = [
+  "Backspace", "Delete", "Tab", "Enter", "Escape",
+  "ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End",
+];
+
+function isDigit(key) {
+  return key.length === 1 && key >= "0" && key <= "9";
+}
+
+function handleWholeNumberKeyDown(event) {
+  if (alwaysAllowedKeys.includes(event.key)) {
+    return;
+  }
+
+  // Ctrl/Cmd combinations are shortcuts, not typing.
+  if (event.ctrlKey || event.metaKey) {
+    return;
+  }
+
+  if (isDigit(event.key)) {
+    return;
+  }
+
+  // Everything else — letters, ".", "-", "+", "e" — never reaches the box.
+  event.preventDefault();
+}
+
+// Pasting bypasses keydown entirely, so a pasted value is stripped down to
+// its digits and inserted in place of the paste.
+function handleWholeNumberPaste(event) {
+  event.preventDefault();
+
+  const pastedText = event.clipboardData.getData("text");
+  const digitsOnly = pastedText.replace(/[^0-9]/g, "");
+
+  if (digitsOnly === "") {
+    return;
+  }
+
+  event.target.value = digitsOnly;
+  event.target.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function restrictToWholeNumbers(input) {
+  input.addEventListener("keydown", handleWholeNumberKeyDown);
+  input.addEventListener("paste", handleWholeNumberPaste);
 }
 
 // ---------------------------------------------------------------------------
@@ -1599,6 +1724,11 @@ addIngredientButton.addEventListener("click", addEmptyRow);
 
 const servingsWantedInput = document.getElementById("servings-wanted");
 servingsWantedInput.addEventListener("input", handleEditorFieldChange);
+
+// Both servings boxes take whole numbers only. You can't cook for 4.5 people,
+// and a decimal or a stray letter in either one is only ever a mistake.
+restrictToWholeNumbers(servingsWantedInput);
+restrictToWholeNumbers(recipeServingsInput);
 
 const pasteButton = document.getElementById("paste-button");
 pasteButton.addEventListener("click", handlePasteButton);

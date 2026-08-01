@@ -92,7 +92,7 @@
             <div class="meta-field">
               <label for="recipe-servings">Makes</label>
               <div class="stepper">
-                <input type="number" id="recipe-servings" min="1" />
+                <input type="number" id="recipe-servings" min="1" step="1" inputmode="numeric" />
                 <span class="stepper-suffix">servings</span>
               </div>
               <!-- Chunk 10: filled in by script.js when this box is blank,
@@ -277,7 +277,7 @@
           <!-- The scale control, on the dark card -->
           <div class="scale-bar">
             <label for="servings-wanted">Cooking for</label>
-            <input type="number" id="servings-wanted" value="4" min="1" />
+            <input type="number" id="servings-wanted" value="4" min="1" step="1" inputmode="numeric" />
             <span class="scale-suffix">people</span>
             <!-- Filled in by script.js with something like "×1.5", and left
                  empty when the multiplier is exactly 1. -->

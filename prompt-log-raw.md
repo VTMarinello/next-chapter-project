@@ -847,3 +847,23 @@ Can you make an entirely new HTML animation based entirely off the first one and
 ### 2026-07-31 22:40:39
 
 actually the only issieis tht when we go to scale down it starts with one appe firs tframe ,populates the twele, then reduces ot one. everythingis fine excet the awhe ni switch to eless servings it doesnt start the naomtion was ctually good but you had it right they basiclaly swap in as two differnt naimations, when i go to less than X servings, it should populate the new image and thaen clicking scale it runs either one. also can you make the buttos a little cooler? lifted, shadowed something. double bordered idk. some slight 3d so they pop a bit.
+
+---
+
+### 2026-07-31 22:46:39
+
+ read me the architecture a little bit about how it works the buy directional scaling the reverse animation, the red pattern that grabs the taste in thing and before you write to read me, do you think any of our architectural choices were made poorly in that technically there was a easier more efficient way of doi not efficient and like just riding way less lines of code necessarily but more so in the actual approach and some of our math choices, which may or may not in less  Lines of code.
+
+---
+
+### 2026-07-31 22:53:41
+
+can you run a quick battery of tests and see what edge cases arent handled well? i am also coinsidering making recipes saved to local storage. like as a save recipe button, but it stores it as the nameof the recipe in a "saved recipes pagesthatsseperate off page accessible up top, and itmaybe says.. actrually it cant name the recipes. Mayb eit jsut displays them as carsa and says the amount of people its scaled too, and you can mame recipes yourself on the main page. ? somehwere inthe geenrate recipe section on the right? maybethats whwre theres a save recipe button, and te add name thing that has to be pressed before saving. or added.  and make the access saved recipes button up in the tip right quite prominent inthe header band
+
+---
+
+### 2026-07-31 22:57:30
+
+you should also only be able to click the numbers or type in numbers in the cooking for x peope box. currently you can tyoe letters andnon integers
+
+as for the layout i think th page is cluttered enough, i would reccmond them saving to the saved recipes page. currently overloading the page with more recipes... i mean where would thye go aver morethan a few? unless its below all of it and generate in a scroll down for saved recipes type thing. wirther could work. it cant just be more squares though without distinct seperation in some way
