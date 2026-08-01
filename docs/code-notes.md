@@ -375,3 +375,119 @@ editing what it was given.
 3. The `input` event fires on every keystroke, not just when you finish typing. What actually happens,
    step by step, if you type "12" into the servings box — does the recipe scale for "1" at any point,
    and does that matter?
+
+---
+
+## Chunk 4 — Show amounts as fractions
+
+**What it does for the user:**
+Scaled amounts stop showing as ugly decimals. Where chunk 3 left milk reading "2.25 cups milk" after
+scaling to 6 servings, it now reads "2¼ cups milk" — the number a cook can actually line up against a
+measuring cup. Nothing else on the page changes; this chunk only touches how the amount number gets
+turned into text.
+
+**How it works, step by step — tracing `2.25` from scaled decimal to `2¼`:**
+
+1. `renderIngredientRow` (from chunk 2) hands `2.25` to `formatIngredientText`, which passes it into
+   `formatAmount(2.25)` — the single entry point this whole chunk builds toward.
+2. `formatAmount` first calls `splitWholeAndLeftover(2.25)`. `Math.floor(2.25)` gives `2` (the whole
+   number part). `2.25 - 2` gives `0.25` (the leftover decimal). It returns
+   `{ whole: 2, leftover: 0.25 }`.
+3. `formatAmount` hands the leftover, `0.25`, to `snapToNiceFraction(0.25)`. That function walks the
+   list `niceFractionAmounts` — `0, ¼, ⅓, ½, ⅔, ¾, 1` — measuring how far `0.25` is from each one.
+   `0.25` is exactly `0.25`, so the distance is `0`, the smallest possible, and `¼` wins outright. It
+   returns `{ value: 0.25, symbol: "¼" }`.
+4. `formatAmount` calls `combineWholeAndFraction(2, { value: 0.25, symbol: "¼" })`. Since the matched
+   fraction's value isn't `1`, nothing special happens — it just bundles the whole number and the
+   symbol together: `{ whole: 2, symbol: "¼" }`.
+5. Finally `formatWholeAndFraction(2, "¼")` runs. The symbol isn't empty and the whole number isn't
+   `0`, so it falls to the last case: `whole + symbol`, which is `2` (a number) glued to `"¼"` (a
+   string) — JavaScript converts the number to text automatically, producing `"2¼"`.
+6. That string comes back up through `formatAmount`, into `formatIngredientText`, which appends the
+   unit and ingredient name, and the `<li>` on screen reads "2¼ cups milk".
+
+**Each new function — what goes in, what happens, what comes out:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `splitWholeAndLeftover(amount)` | a decimal like `2.25` | floors it to get the whole number, subtracts to get the remainder | `{ whole, leftover }` |
+| `snapToNiceFraction(leftover)` | a decimal between 0 and 1, like `0.25` | loops over every candidate in `niceFractionAmounts`, tracks whichever has the smallest absolute distance so far | the closest `{ value, symbol }` object |
+| `combineWholeAndFraction(whole, fraction)` | a whole number and the fraction object above | checks if the fraction snapped all the way to `1`; if so, bumps the whole number up instead of showing a fraction | `{ whole, symbol }` |
+| `formatWholeAndFraction(whole, symbol)` | a whole number and a symbol string | decides which pieces to show: symbol alone, number alone, or both stuck together | the final display string, e.g. `"3"`, `"¾"`, `"2¼"` |
+| `formatAmount(amount)` | the raw scaled decimal | runs the four functions above in sequence | the text that lands in the ingredient row |
+
+**The idea that deserves emphasis — why a loop beats a chain of if/else:**
+
+The obvious-looking alternative would be something like:
+
+```
+if (leftover < 0.125) use nothing
+else if (leftover < 0.29) use ¼
+else if (leftover < 0.42) use ⅓
+...
+```
+
+That means someone has to sit down and compute every boundary by hand — the midpoint between ¼ (0.25)
+and ⅓ (0.333) is 0.291666..., and somebody has to type that number in. `snapToNiceFraction` never
+does this. It just measures the plain distance from the leftover to every candidate in
+`niceFractionAmounts` and keeps whichever is closest. The boundary between ¼ and ⅓ is never written
+down anywhere — it's just the point where "distance to ¼" and "distance to ⅓" happen to be equal, and
+the loop finds that automatically for every possible leftover value without anyone computing it.
+
+The payoff shows up the moment someone adds `⅛` to the list later. In the if/else version, adding a
+new fraction means re-deriving and rewriting *every* boundary near it by hand — miss one and two
+fractions silently overlap or leave a gap. In the loop version, you add one line —
+`{ value: 0.125, symbol: "⅛" }` — and every nearby boundary rearranges itself correctly on the next
+run, because the loop was never trusting a hand-written number in the first place. The logic scales
+to more fractions; the if/else chain gets more fragile with every fraction added.
+
+**The roll-up case — `2.9` → `3`, not `"2 1"`:**
+
+`splitWholeAndLeftover(2.9)` gives `{ whole: 2, leftover: 0.9 }`. `snapToNiceFraction(0.9)` measures
+distance to every candidate and finds `1` is closest (distance `0.1`, beating `¾`'s distance of
+`0.15`). But the fraction list's entry for `1` has `symbol: ""` — there's no glyph for "one whole" as
+a fraction. Without extra handling, the code would produce `2` + `""` = `"2"`, silently dropping
+almost a whole unit. `combineWholeAndFraction` catches this specific case explicitly: if the matched
+fraction's `value` is exactly `1`, it adds `1` to the whole number instead of attaching a fraction
+symbol, giving `{ whole: 3, symbol: "" }`, which `formatWholeAndFraction` then prints as plain `"3"`.
+This is the one spot in the chunk that *isn't* derived automatically by the loop — it's a hand-written
+special case, because "snap up to the next whole number" is a real possible outcome of the same
+distance comparison used everywhere else.
+
+**Worth knowing:**
+
+- **`0.5833 cups` still snaps to `½ cups`, and it's meaningfully wrong.** `snapToNiceFraction` only
+  knows about six values; it has no idea that `0.5833` is actually `⅔` minus a sliver, or that
+  there's a smaller unit (tablespoons) that could express the remainder exactly. It picks `½` because
+  that's the closest of its six options — about 8% off, silently throwing away roughly 1⅓ tablespoons
+  of milk. PLAN.md flags this directly: the fix isn't more fraction options, it's chunk 5's
+  cups→tbsp→tsp decomposition ladder, which only falls back to a plain fraction when the error is
+  small enough to ignore.
+- **`formatAmount` takes only one argument (`amount`) — no `unit`.** That means it treats a cup
+  measurement and a count of eggs identically: both get the same six-fraction snap. PLAN.md's function
+  table lists chunk 5's version as `formatAmount(amount, unit)`, because the *unit* is what determines
+  whether decomposing into smaller units is even possible (works for cups/tbsp/tsp, meaningless for
+  "eggs" or grams). The signature is going to change, not just gain more logic behind the same inputs.
+- **Metric units would currently be mishandled.** No gram or millilitre amounts exist in
+  `exampleRecipe` yet, so nothing is visibly broken — but if one were added today it would get snapped
+  to a fraction rather than rounded, which is not what PLAN.md's formatting-strategy table specifies.
+  Chunk 5's unit classification is what has to catch this; it must not be silently inherited.
+- **Ties are broken by list order, not by design.** `snapToNiceFraction` only replaces the current
+  best match on a *strict* `<` comparison. If a leftover sits exactly halfway between two fractions,
+  the earlier one in `niceFractionAmounts` wins by default — nobody wrote that rule on purpose, it
+  just falls out of how the comparison is coded.
+- **`0` and `1` share the same empty symbol (`""`) in the fraction list**, but only `1` gets the
+  special roll-up treatment in `combineWholeAndFraction`. That's intentional — a leftover that rounds
+  down to `0` needs nothing extra, since the whole number is already correct — but it's easy to
+  misread the two blank-symbol entries as doing the same job when only one of them triggers extra
+  logic.
+
+**Three questions an interviewer could ask:**
+
+1. `niceFractionAmounts` includes `0` and `1` as if they were fractions. Walk me through what breaks
+   in `snapToNiceFraction` or `combineWholeAndFraction` if you deleted the `{ value: 1, symbol: "" }`
+   entry.
+2. If you added `{ value: 0.125, symbol: "⅛" }` to the list, what code, if any, would you have to
+   change elsewhere for the app to start correctly showing `⅛` on screen?
+3. `formatAmount` produces `½` for both `0.5` exactly and `0.5833`. Explain why that's not a bug in
+   this chunk specifically, and what has to exist in chunk 5 to fix it.

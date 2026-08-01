@@ -25,7 +25,7 @@ function formatIngredientText(ingredient) {
   const textParts = [];
 
   if (ingredient.amount !== null) {
-    textParts.push(ingredient.amount);
+    textParts.push(formatAmount(ingredient.amount));
   }
 
   if (ingredient.unit !== "") {
@@ -136,6 +136,99 @@ function getScaledIngredients(ingredients, multiplier) {
 // formatting ("¾ cup") that chunk 4 handles for ingredient amounts.
 function roundToTwoDecimals(number) {
   return Math.round(number * 100) / 100;
+}
+
+// Chunk 4: nice fractions.
+//
+// Scaling produces decimals like 2.25 — nobody owns a "2.25 cup" measure.
+// This turns that into 2¼, the closest amount a real measuring cup or spoon
+// set can actually make. It only snaps to a fraction; deciding when a
+// fraction is too far off and breaking the amount into smaller units
+// instead (cups -> tbsp -> tsp) is chunk 5.
+
+// The leftover amounts a standard measuring set can make, each paired with
+// its printable character. 0 and 1 are included as endpoints: they let the
+// loop below treat "round down to the whole number" and "round up to the
+// next whole number" the same way it treats every other fraction, instead
+// of needing special-case code for them.
+const niceFractionAmounts = [
+  { value: 0, symbol: "" },
+  { value: 0.25, symbol: "¼" },
+  { value: 1 / 3, symbol: "⅓" },
+  { value: 0.5, symbol: "½" },
+  { value: 2 / 3, symbol: "⅔" },
+  { value: 0.75, symbol: "¾" },
+  { value: 1, symbol: "" },
+];
+
+// Splits a scaled amount into its whole number and its decimal leftover.
+// 2.25 -> whole 2, leftover 0.25. The leftover is what gets snapped to a
+// fraction; the whole number is left alone.
+function splitWholeAndLeftover(amount) {
+  const whole = Math.floor(amount);
+  const leftover = amount - whole;
+  return { whole, leftover };
+}
+
+// Finds the nice fraction closest to the given leftover decimal.
+//
+// This is a loop that compares every candidate by plain distance, rather
+// than a chain of if/else statements checking hand-picked ranges (like
+// "if leftover > 0.6, use ⅔"). The reason: with a loop, the boundary
+// between two fractions is never written down anywhere — it just falls out
+// of whichever candidate happens to be closer. That means adding a new
+// fraction to the list (⅛, say) automatically shifts every boundary around
+// it correctly, with no if/else logic to rewrite by hand.
+function snapToNiceFraction(leftover) {
+  let closestFraction = niceFractionAmounts[0];
+  let smallestDistance = Math.abs(leftover - closestFraction.value);
+
+  for (const fraction of niceFractionAmounts) {
+    const distance = Math.abs(leftover - fraction.value);
+    if (distance < smallestDistance) {
+      smallestDistance = distance;
+      closestFraction = fraction;
+    }
+  }
+
+  return closestFraction;
+}
+
+// Puts the whole number and the snapped fraction back together, handling
+// the case where the leftover snapped all the way up to 1. A leftover of
+// 0.9 snaps to the "1" entry in the list, and 2.9 needs to read as 3, not
+// as "2" with a stray "1" fraction stuck on it — so a snap to 1 rolls into
+// the whole number instead of being displayed as a fraction.
+function combineWholeAndFraction(whole, fraction) {
+  if (fraction.value === 1) {
+    return { whole: whole + 1, symbol: "" };
+  }
+  return { whole: whole, symbol: fraction.symbol };
+}
+
+// Turns a whole number and a fraction symbol into the text a cook reads.
+// A whole number alone shows as just the number ("3"), a fraction alone
+// shows as just the fraction ("¾", not "0¾"), and both together are
+// written side by side with no space ("2¼").
+function formatWholeAndFraction(whole, symbol) {
+  if (symbol === "") {
+    return String(whole);
+  }
+  if (whole === 0) {
+    return symbol;
+  }
+  return whole + symbol;
+}
+
+// Top-level entry point: turns a raw scaled amount (a decimal number) into
+// the text an ingredient row displays. Unit-aware formatting — deciding
+// when to break an amount into smaller units instead of using a fraction —
+// is added in chunk 5.
+function formatAmount(amount) {
+  const { whole, leftover } = splitWholeAndLeftover(amount);
+  const nearestFraction = snapToNiceFraction(leftover);
+  const combined = combineWholeAndFraction(whole, nearestFraction);
+  return formatWholeAndFraction(combined.whole, combined.symbol);
 }
 
 // Writes the current multiplier (e.g. "×1.5") into its small text spot

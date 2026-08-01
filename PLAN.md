@@ -74,8 +74,8 @@ everything before it is groundwork, everything after is making it genuinely usab
 |---|---|---|---|---|
 | 1 | Page skeleton — `index.html`, `style.css`, `script.js` created and correctly linked, with something visible on screen proving all three are connected | committed | `Create page structure` | ☑ |
 | 2 | Display one hard-coded recipe on the page, built from data in JavaScript rather than typed into the HTML | committed | `Display a recipe` | ☑ |
-| 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | not started | `Scale ingredients by servings` | ☐ |
-| 4 | Nice fractions — turn `0.75` into `¾` by snapping to the nearest amount a cook can actually measure | not started | `Show amounts as fractions` | ☐ |
+| 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | committed | `Scale ingredients by servings` | ☑ |
+| 4 | Nice fractions — turn `0.75` into `¾` by snapping to the nearest amount a cook can actually measure | committed | `Show amounts as fractions` | ☑ |
 | 5 | **Mixed-unit decomposition.** `0.5833 cups` → `9 tbsp 1 tsp`. The change-making ladder, plus the rule deciding when a plain fraction is good enough | not started | `Break amounts into mixed units` | ☐ |
 | 6 | **The editor** — name, servings, and a list of editable ingredient rows. Add, edit, delete a row. This is the single shared surface both entry paths lead to | not started | `Add recipe editor` | ☐ |
 | 7 | **Paste-and-parse.** Drop in recipe text, regex fills the editor rows, review notice reports what parsed and flags what didn't | not started | `Parse pasted recipe text` | ☐ |
@@ -311,7 +311,8 @@ enough to explain out loud in a sentence. See the code style note in `CLAUDE.md`
 | `calculateMultiplier(wanted, makes)` | The one ratio everything uses |
 | `scaleAmount(amount, multiplier)` | One number × multiplier |
 | `scaleRange(range, multiplier)` | Calls `scaleAmount` twice |
-| `scaleIngredient(ing, multiplier)` | Skips unscalable lines |
+| `scaleIngredient(ing, multiplier)` | Skips unscalable lines; returns a *copy*, never mutates |
+| `getScaledIngredients(ings, multiplier)` | Runs `scaleIngredient` over the whole list — added during chunk 3, not originally planned |
 
 **Formatting** — the interesting part
 
