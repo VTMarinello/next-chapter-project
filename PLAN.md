@@ -73,7 +73,7 @@ everything before it is groundwork, everything after is making it genuinely usab
 | # | Chunk | Status | Commit message | Explained |
 |---|---|---|---|---|
 | 1 | Page skeleton — `index.html`, `style.css`, `script.js` created and correctly linked, with something visible on screen proving all three are connected | committed | `Create page structure` | ☑ |
-| 2 | Display one hard-coded recipe on the page, built from data in JavaScript rather than typed into the HTML | not started | `Display a recipe` | ☐ |
+| 2 | Display one hard-coded recipe on the page, built from data in JavaScript rather than typed into the HTML | committed | `Display a recipe` | ☑ |
 | 3 | **Serving input + scaling.** Change the number, every amount recalculates. *This is the smallest demonstration of value* | not started | `Scale ingredients by servings` | ☐ |
 | 4 | Nice fractions — turn `0.75` into `¾` by snapping to the nearest amount a cook can actually measure | not started | `Show amounts as fractions` | ☐ |
 | 5 | **Mixed-unit decomposition.** `0.5833 cups` → `9 tbsp 1 tsp`. The change-making ladder, plus the rule deciding when a plain fraction is good enough | not started | `Break amounts into mixed units` | ☐ |
