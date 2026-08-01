@@ -207,3 +207,9 @@ yeah augment our markdown files to contain in the build plans everything we just
 ### 2026-07-31 17:12:26
 
 yes, make sure you  also account for whatever architectural changes need to be made to support the recipe loader. I'm imagining something like you know a copy and paste form for that maybe a paste button or something plus they can click into the field and paste it in themselves. And then when you or of course, is the option below to enter it manually try and use some good UX practices to make it look decent on page and also maybe some sort of prompting to have users look over the added recipe or like the ability to make edits, obviously so like when you uploaded, it should present itself in the same way, as if you added it manually line by line and then those lines are editable before you choose how many people to scale it seal and then the output should look clean below. It stylized in some format.
+
+---
+
+### 2026-07-31 17:16:59
+
+go for it
