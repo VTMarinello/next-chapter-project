@@ -1446,7 +1446,17 @@ const scaleAnimationMs = 1800;
 // half-played.
 let scaleAnimationTimer = null;
 
-function playScaleAnimation() {
+// Works out which way the scene should run. Scaling up fills the table;
+// scaling down clears it back to the one apple you started with.
+function scaleDirection(multiplier) {
+  if (multiplier < 1) {
+    return "down";
+  }
+
+  return "up";
+}
+
+function playScaleAnimation(multiplier) {
   const outputPanel = document.getElementById("scale-output");
 
   if (scaleAnimationTimer !== null) {
@@ -1458,12 +1468,12 @@ function playScaleAnimation() {
   // after, and concludes nothing changed — so the animation never restarts.
   // Reading a layout property in between forces the removal to be applied
   // first, which is what lets the animation start over from the beginning.
-  outputPanel.classList.remove("is-scaling");
+  outputPanel.classList.remove("is-scaling", "scale-up", "scale-down");
   void outputPanel.offsetWidth;
-  outputPanel.classList.add("is-scaling");
+  outputPanel.classList.add("is-scaling", "scale-" + scaleDirection(multiplier));
 
   scaleAnimationTimer = setTimeout(function () {
-    outputPanel.classList.remove("is-scaling");
+    outputPanel.classList.remove("is-scaling", "scale-up", "scale-down");
     scaleAnimationTimer = null;
   }, scaleAnimationMs);
 }
@@ -1471,7 +1481,15 @@ function playScaleAnimation() {
 function handleScaleButton() {
   // Redraw first, so the rows the animation staggers in are the current ones.
   updateScaledOutput();
-  playScaleAnimation();
+
+  // Work out the multiplier the same way the output just did, so the scene
+  // runs in the direction the numbers actually moved.
+  const recipe = readEditorIntoRecipe();
+  const servingsWantedInput = document.getElementById("servings-wanted");
+  const servingsWanted = readServingsInput(servingsWantedInput.value);
+  const multiplier = determineMultiplier(recipe.servings, servingsWanted);
+
+  playScaleAnimation(multiplier);
 }
 
 // Pre-fills the editor with a saved recipe if this browser already has one,

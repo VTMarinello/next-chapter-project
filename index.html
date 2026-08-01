@@ -10,36 +10,72 @@
 
   <body>
     <!-- The app bar. Frames the page as an application rather than a
-         document with form fields on it, and gives the dark recipe card
+         document with form fields on it, and gives the dark result card
          below something to belong to. -->
     <header class="appbar">
       <div class="appbar-inner">
         <div class="brand">
           <span class="brand-mark" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="18" height="18" role="presentation">
-              <path
-                d="M4 7h16M4 12h16M4 17h9"
-                stroke="currentColor"
-                stroke-width="2.2"
-                stroke-linecap="round"
-                fill="none"
-              />
+            <svg viewBox="0 0 32 32" width="22" height="22" role="presentation">
+              <!-- A measuring jug, filled to a line -->
+              <path d="M8 8h14a5 5 0 0 1 0 10h-1v6a4 4 0 0 1-4 4h-5a4 4 0 0 1-4-4z"
+                    fill="none" stroke="currentColor" stroke-width="2.4"
+                    stroke-linejoin="round" />
+              <path d="M8 15h8" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" />
             </svg>
           </span>
-          <span class="brand-name">Recipe Scaler</span>
+          <span class="brand-text">
+            <span class="brand-name">Recipe Scaler</span>
+            <span class="brand-tag">Kitchen maths, done for you</span>
+          </span>
         </div>
-        <p class="appbar-note">Cook any recipe for any number of people</p>
       </div>
     </header>
 
     <main class="workspace">
-      <!-- ============ LEFT: the recipe you're working on ============ -->
+      <!-- ============ LEFT COLUMN ============ -->
+      <div class="column-work">
+        <!-- Pasting is the fast path and the one most people want, so it leads
+           rather than sitting folded away underneath the table. Region 1 in
+           PLAN.md's flow. -->
+      <section id="paste-area" class="card card-paste">
+        <div class="card-head card-head-accent">
+          <div>
+            <h2 class="card-title">Start with a recipe</h2>
+            <p class="card-sub">Paste an ingredient list — one per line</p>
+          </div>
+          <span class="step-chip" aria-hidden="true">Step 1</span>
+        </div>
+
+        <div class="card-body">
+          <textarea
+            id="paste-textarea"
+            rows="7"
+            placeholder="2 cups flour&#10;1 1/2 cups whole milk&#10;3 large eggs&#10;2-3 cloves garlic&#10;Salt and pepper to taste"
+          ></textarea>
+          <div class="drawer-buttons">
+            <!-- "Read recipe" is the primary action. "Paste from clipboard"
+                 is only a shortcut and may not work at all over file://, so
+                 it deliberately looks secondary. -->
+            <button type="button" id="read-recipe-button">Read recipe</button>
+            <button type="button" id="paste-button" class="button-secondary">
+              Paste from clipboard
+            </button>
+          </div>
+          <p class="hint">
+            Every line becomes a row below, where you can fix anything it
+            misread. Nothing is ever dropped.
+          </p>
+        </div>
+      </section>
+
       <section id="editor" class="card card-editor">
         <div class="card-head">
           <div>
-            <h2 class="card-title">Your recipe</h2>
-            <p class="card-sub">Type it in, or paste one below</p>
+            <h2 class="card-title">Check it over</h2>
+            <p class="card-sub">Edit any row, or add one by hand</p>
           </div>
+          <span class="step-chip" aria-hidden="true">Step 2</span>
         </div>
 
         <div class="card-body">
@@ -88,38 +124,9 @@
             </button>
           </div>
 
-          <!-- Region 1 in PLAN.md's flow, folded away by default. It used to
-               be a large permanently-open textarea at the top of the page —
-               the biggest and emptiest thing on screen, above the content it
-               feeds. <details> is plain HTML, so this needs no JavaScript. -->
-          <details class="drawer" id="paste-area">
-            <summary>
-              <span class="drawer-caret" aria-hidden="true">▸</span>
-              Paste a recipe instead
-            </summary>
-            <div class="drawer-body">
-              <p class="hint">
-                Paste an ingredient list and each line becomes a row above.
-                Anything it can't read is flagged, never dropped.
-              </p>
-              <textarea
-                id="paste-textarea"
-                rows="6"
-                placeholder="2 cups flour&#10;1 1/2 cups whole milk&#10;3 large eggs&#10;Salt and pepper to taste"
-              ></textarea>
-              <div class="drawer-buttons">
-                <!-- "Read recipe" is the primary action. "Paste from
-                     clipboard" is only a shortcut and may not work at all
-                     over file://, so it deliberately looks secondary. -->
-                <button type="button" id="read-recipe-button">Read recipe</button>
-                <button type="button" id="paste-button" class="button-secondary">
-                  Paste from clipboard
-                </button>
-              </div>
-            </div>
-          </details>
         </div>
-      </section>
+        </section>
+      </div>
 
       <!-- ============ RIGHT: the scaled result ============
            Dark on purpose. It's the one object on the page you actually read
@@ -142,6 +149,11 @@
                --i on each element is its place in the stagger. CSS can't
                count elements itself, so the number is set here and multiplied
                by a step in the stylesheet to get that element's delay. -->
+          <div class="result-head">
+            <h2 class="card-title card-title-dark">Scaled recipe</h2>
+            <span class="step-chip step-chip-dark" aria-hidden="true">Step 3</span>
+          </div>
+
           <div class="stage" aria-hidden="true">
             <svg viewBox="95 195 610 258" class="scene" role="presentation">
               <defs>
