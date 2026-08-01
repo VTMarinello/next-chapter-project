@@ -56,6 +56,9 @@
           <label for="recipe-servings">Makes</label>
           <input type="number" id="recipe-servings" min="1" />
           <span>servings</span>
+          <!-- Chunk 10: filled in by script.js when this box is blank, zero,
+               negative, or not a number. Empty the rest of the time. -->
+          <span id="recipe-servings-message" class="field-message"></span>
         </div>
 
         <!-- Filled in by script.js with one row per ingredient -->
@@ -70,6 +73,9 @@
         <span>people</span>
         <!-- Filled in by script.js with something like "×1.5" -->
         <span id="multiplier-display"></span>
+        <!-- Chunk 10: filled in by script.js when this box is blank, zero,
+             negative, or not a number. Empty the rest of the time. -->
+        <span id="servings-wanted-message" class="field-message"></span>
       </div>
 
       <!-- Starts empty on purpose. script.js fills this in with the recipe. -->

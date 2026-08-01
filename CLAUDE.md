@@ -18,11 +18,21 @@ it in conversation.
 
 ## Hard constraints
 
-- Plain **HTML, CSS, and JavaScript** only
-- No frameworks (no React), no build step, no databases, no APIs, no user accounts
+Required by the course (Part 5, Part 7):
+
+- **HTML, CSS, and JavaScript** must all be present in the submission
 - Entry file must be `index.html` in the repo root — GitHub Pages requires this
-- CSS and JS in separate files, linked from the HTML
 - No secrets, keys, or personal information anywhere in the repo
+
+Chosen for this project, not imposed by the course:
+
+- **No frameworks and no build step.** The course lists React under things the project "does
+  not need" — that is permission to skip it, not a prohibition. Skipping it anyway because
+  GitHub Pages serves static files directly, so a build step is a deployment problem the
+  project doesn't otherwise have; and because every line has to be explainable out loud, which
+  is harder when a framework is doing work invisibly.
+- No databases, no APIs, no user accounts — all listed as unnecessary by the course
+- CSS and JS in separate files, linked from the HTML
 
 ## Code style
 

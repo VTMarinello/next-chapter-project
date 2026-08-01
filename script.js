@@ -77,25 +77,26 @@ function renderRecipe(recipe, servingsWanted) {
   // it. replaceChildren() with no arguments empties the container.
   recipeContainer.replaceChildren();
 
-  const multiplier = calculateMultiplier(servingsWanted, recipe.servings);
-  renderMultiplier(multiplier);
+  // Chunk 10: recipe.servings and servingsWanted can both be null now — see
+  // readServingsInput further down — when a servings box is blank, zero,
+  // negative, or not a number. renderServingsMessages tells the user which
+  // box needs fixing; determineMultiplier falls back to the recipe's
+  // original amounts instead of dividing by something unusable.
+  renderServingsMessages(recipe.servings, servingsWanted);
+  const canScale = recipe.servings !== null && servingsWanted !== null;
+  const multiplier = determineMultiplier(recipe.servings, servingsWanted);
+  renderMultiplier(multiplier, canScale);
 
   const heading = document.createElement("h2");
   heading.textContent = recipe.name;
   recipeContainer.appendChild(heading);
 
   const servingsLine = document.createElement("p");
-  servingsLine.textContent = "Originally serves " + recipe.servings;
+  servingsLine.textContent = "Originally serves " + servingsDisplayText(recipe.servings);
   recipeContainer.appendChild(servingsLine);
 
   const scaledIngredients = getScaledIngredients(recipe.ingredients, multiplier);
-
-  const ingredientList = document.createElement("ul");
-  for (const ingredient of scaledIngredients) {
-    const row = renderIngredientRow(ingredient);
-    ingredientList.appendChild(row);
-  }
-  recipeContainer.appendChild(ingredientList);
+  renderIngredientList(recipeContainer, scaledIngredients);
 }
 
 // Chunk 3: scaling ingredients to a different number of servings.
@@ -570,8 +571,18 @@ function formatAmount(amount, unit) {
 
 // Writes the current multiplier (e.g. "×1.5") into its small text spot
 // next to the servings input, so the user can see what's being applied.
-function renderMultiplier(multiplier) {
+function renderMultiplier(multiplier, canScale) {
   const multiplierDisplay = document.getElementById("multiplier-display");
+
+  // Showing "×1" when scaling couldn't happen would look like a real,
+  // deliberate 1x scale rather than "there's nothing to calculate right
+  // now" — the inline message next to the bad box already explains that, so
+  // the multiplier is left blank instead of showing a misleading number.
+  if (!canScale) {
+    multiplierDisplay.textContent = "";
+    return;
+  }
+
   multiplierDisplay.textContent = "×" + roundToTwoDecimals(multiplier);
 }
 
@@ -593,7 +604,11 @@ function renderEditor(recipe) {
   nameInput.value = recipe.name;
 
   const servingsInput = document.getElementById("recipe-servings");
-  servingsInput.value = recipe.servings;
+  // recipe.servings can be null now (see readServingsInput) when the box was
+  // left blank or invalid — setting an input's value straight to null would
+  // display the literal text "null", so a blank/invalid box is redrawn as
+  // an empty box instead.
+  servingsInput.value = recipe.servings === null ? "" : recipe.servings;
 
   const rowsContainer = document.getElementById("ingredient-rows");
   rowsContainer.replaceChildren();
@@ -688,7 +703,13 @@ function amountFieldText(ingredient) {
 // currently sitting in these boxes.
 function readEditorIntoRecipe() {
   const name = document.getElementById("recipe-name").value;
-  const servings = Number(document.getElementById("recipe-servings").value);
+
+  // Chunk 10: this used to be a bare Number(...), which turns a blank box
+  // into 0 and feeds straight into a division further down the line — the
+  // root cause of the Infinity/NaN bugs described in PLAN.md's chunk 10
+  // row. readServingsInput returns null instead for anything that isn't a
+  // usable positive number.
+  const servings = readServingsInput(document.getElementById("recipe-servings").value);
 
   const ingredients = [];
   const rows = document.querySelectorAll("#ingredient-rows .ingredient-row");
@@ -744,7 +765,17 @@ function readAmountFieldText(text) {
     return { amount: range.amount, amountMax: range.amountMax };
   }
 
-  return { amount: Number(trimmedText), amountMax: null };
+  const parsedAmount = Number(trimmedText);
+
+  // Chunk 10: a negative amount ("-2 cups flour") doesn't mean anything for
+  // a recipe, and neither does text that isn't a number at all ("abc"). Both
+  // are treated the same as a blank box — no amount — rather than silently
+  // scaling a negative number or showing "NaN cups" in the output.
+  if (!isUsableAmount(parsedAmount)) {
+    return { amount: null, amountMax: null };
+  }
+
+  return { amount: parsedAmount, amountMax: null };
 }
 
 // Appends one blank ingredient row and redraws the editor.
@@ -777,7 +808,12 @@ function deleteRow(index) {
 // right after it has just cleared the save.
 function updateScaledOutput() {
   const servingsWantedInput = document.getElementById("servings-wanted");
-  const servingsWanted = Number(servingsWantedInput.value);
+
+  // Chunk 10: same fix as readEditorIntoRecipe's servings field — a bare
+  // Number(...) here is what turned a blank "cooking for" box into a
+  // silent ×0. readServingsInput returns null instead, and renderRecipe
+  // decides what to show when it gets one.
+  const servingsWanted = readServingsInput(servingsWantedInput.value);
   const recipe = readEditorIntoRecipe();
   renderRecipe(recipe, servingsWanted);
 }
@@ -1193,6 +1229,132 @@ function handleResetButton() {
   clearSavedRecipe();
   renderEditor(exampleRecipe);
   updateScaledOutput();
+}
+
+// Chunk 10: empty states and invalid input.
+//
+// Two servings boxes feed straight into calculateMultiplier's division:
+// "Makes N servings" is the divisor, "Cooking for N people" is the
+// numerator. A blank divisor used to produce Infinity, a blank numerator
+// used to produce silent zeroes, and both blank together used to produce
+// NaN — see PLAN.md's chunk 10 row for the confirmed bugs. The fix applied
+// throughout this section is the same idea everywhere: turn "not a usable
+// number" into null as early as possible, and treat null as "don't scale,
+// and say why" instead of letting a bad number reach the division.
+
+// A servings count only means something if it's a real, positive number.
+// Zero, negative, blank, and "abc" all fail this the same way, which is why
+// one check covers all of them instead of three separate ones.
+function isUsableServingsNumber(number) {
+  return Number.isFinite(number) && number > 0;
+}
+
+// Reads a servings box's raw text into a number, or null when it isn't
+// usable. Returning null — instead of letting a bad value become NaN or a
+// silent 0 — means every place that uses this only has to ask one question,
+// "is it null?", instead of guarding against several different kinds of
+// broken number.
+function readServingsInput(rawText) {
+  const trimmedText = rawText.trim();
+  if (trimmedText === "") {
+    return null;
+  }
+
+  const number = Number(trimmedText);
+  if (!isUsableServingsNumber(number)) {
+    return null;
+  }
+
+  return number;
+}
+
+// Decides what to scale ingredient amounts by. A multiplier only means
+// something when both servings numbers are usable — if either is missing or
+// invalid there is nothing sensible to divide by, so the recipe is shown at
+// its original amounts (multiplier 1) instead of guessing at a number the
+// user didn't type.
+function determineMultiplier(recipeServings, servingsWanted) {
+  if (recipeServings === null || servingsWanted === null) {
+    return 1;
+  }
+  return calculateMultiplier(servingsWanted, recipeServings);
+}
+
+// Plain-language explanations shown next to a servings box when it isn't
+// usable. Written once here so the same wording appears everywhere the
+// message can show up.
+const RECIPE_SERVINGS_MESSAGE = "Enter how many servings the recipe makes.";
+const SERVINGS_WANTED_MESSAGE = "Enter how many people you're cooking for.";
+
+// Writes, or clears, the inline message next to each servings box. Runs on
+// every render, so a message appears the moment a box becomes unusable and
+// disappears the moment it's fixed — nothing needs to be dismissed by hand.
+function renderServingsMessages(recipeServings, servingsWanted) {
+  const makesMessage = document.getElementById("recipe-servings-message");
+  makesMessage.textContent = recipeServings === null ? RECIPE_SERVINGS_MESSAGE : "";
+
+  const wantedMessage = document.getElementById("servings-wanted-message");
+  wantedMessage.textContent = servingsWanted === null ? SERVINGS_WANTED_MESSAGE : "";
+}
+
+// Text for the "Originally serves N" line. There's nothing to print when
+// the servings box is blank or invalid, so this says so in plain language
+// instead of printing the literal word "null" onto the page.
+function servingsDisplayText(recipeServings) {
+  if (recipeServings === null) {
+    return "?";
+  }
+  return String(recipeServings);
+}
+
+// A negative amount doesn't mean anything for a recipe — there's no such
+// thing as "-2 cups flour" — and neither does a non-numeric one ("abc"). An
+// amount only counts as usable if it's a real number that isn't negative.
+function isUsableAmount(number) {
+  return Number.isFinite(number) && number >= 0;
+}
+
+// A row counts as blank once every field is empty — no amount, no unit, no
+// name. That happens right after "+ Add ingredient" is clicked, or when
+// someone clears every field in a row without deleting it. A blank row
+// isn't a real ingredient, so the output leaves it out rather than
+// rendering it as a stray empty bullet.
+function isBlankIngredient(ingredient) {
+  return ingredient.amount === null && ingredient.unit.trim() === "" && ingredient.name.trim() === "";
+}
+
+// Removes blank rows before the output is drawn. Kept separate from
+// isBlankIngredient so that function stays a single yes/no check.
+function removeBlankIngredients(ingredients) {
+  const displayableIngredients = [];
+  for (const ingredient of ingredients) {
+    if (!isBlankIngredient(ingredient)) {
+      displayableIngredients.push(ingredient);
+    }
+  }
+  return displayableIngredients;
+}
+
+// Draws the scaled ingredient list into the given container, or a plain-
+// language empty state when there's nothing to show — either every row was
+// deleted, or what's left is only blank rows.
+function renderIngredientList(container, ingredients) {
+  const displayableIngredients = removeBlankIngredients(ingredients);
+
+  if (displayableIngredients.length === 0) {
+    const emptyMessage = document.createElement("p");
+    emptyMessage.className = "empty-state-message";
+    emptyMessage.textContent = "No ingredients yet. Add one below, or paste a recipe above.";
+    container.appendChild(emptyMessage);
+    return;
+  }
+
+  const ingredientList = document.createElement("ul");
+  for (const ingredient of displayableIngredients) {
+    const row = renderIngredientRow(ingredient);
+    ingredientList.appendChild(row);
+  }
+  container.appendChild(ingredientList);
 }
 
 // Pre-fills the editor with a saved recipe if this browser already has one,

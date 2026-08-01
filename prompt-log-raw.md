@@ -249,3 +249,15 @@ yeah go for it.
 ### 2026-07-31 19:00:47
 
 go fo the whole thing i need to see it on the page to critique it and know what else to change here. you can quiz  me after when i ask you to.
+
+---
+
+### 2026-07-31 19:28:08
+
+do the original guide pdfs actually say not to use frameworks?
+
+---
+
+### 2026-07-31 19:30:56
+
+I asked you a question. not to change anything

@@ -98,3 +98,16 @@ h1 {
 .unparsed-mark {
   margin-left: 0.25rem;
 }
+
+/* Chunk 10: empty states and invalid input. Just enough to be noticeable -
+   the real styling pass is chunk 9. */
+.field-message {
+  color: #a4432b;
+  font-size: 0.85rem;
+  margin-left: 0.5rem;
+}
+
+.empty-state-message {
+  font-style: italic;
+  color: #555555;
+}
