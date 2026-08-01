@@ -20,7 +20,7 @@
            real way in - pasting with Ctrl/Cmd+V always works here. The
            "Paste from clipboard" button is only a shortcut for that same
            textarea; see handlePasteButton() in script.js. -->
-      <section id="paste-area">
+      <section id="paste-area" class="region-card">
         <h2>Add a Recipe</h2>
         <textarea
           id="paste-textarea"
@@ -35,7 +35,7 @@
 
       <!-- Region 2: the editor. The single surface a user types a recipe into.
            Pre-filled by script.js with exampleRecipe on page load. -->
-      <section id="editor">
+      <section id="editor" class="region-card">
         <h2>Your Recipe</h2>
 
         <!-- Filled in by script.js after a paste is read, e.g. "Read 9 of
@@ -67,19 +67,29 @@
         <button type="button" id="add-ingredient-button">+ Add ingredient</button>
       </section>
 
-      <div id="servings-control">
-        <label for="servings-wanted">Cooking for</label>
-        <input type="number" id="servings-wanted" value="4" min="1" />
-        <span>people</span>
-        <!-- Filled in by script.js with something like "×1.5" -->
-        <span id="multiplier-display"></span>
-        <!-- Chunk 10: filled in by script.js when this box is blank, zero,
-             negative, or not a number. Empty the rest of the time. -->
-        <span id="servings-wanted-message" class="field-message"></span>
-      </div>
+      <!-- Region 3: the scaled output. Wraps the "cooking for" control and
+           the read-only recipe display in one card, styled as the visual
+           hero of the page (chunk 9) - this is what's read at the counter
+           while cooking, so it's the biggest and boldest of the three
+           regions. Wrapping an existing div in a new section doesn't change
+           its id, so script.js's getElementById calls still find it. -->
+      <section id="scale-output" class="region-card region-hero">
+        <h2>Scale It</h2>
 
-      <!-- Starts empty on purpose. script.js fills this in with the recipe. -->
-      <div id="recipe"></div>
+        <div id="servings-control">
+          <label for="servings-wanted">Cooking for</label>
+          <input type="number" id="servings-wanted" value="4" min="1" />
+          <span>people</span>
+          <!-- Filled in by script.js with something like "×1.5" -->
+          <span id="multiplier-display"></span>
+          <!-- Chunk 10: filled in by script.js when this box is blank, zero,
+               negative, or not a number. Empty the rest of the time. -->
+          <span id="servings-wanted-message" class="field-message"></span>
+        </div>
+
+        <!-- Starts empty on purpose. script.js fills this in with the recipe. -->
+        <div id="recipe"></div>
+      </section>
     </main>
 
     <!-- Loaded at the end of the body so the HTML above already exists when the script runs -->

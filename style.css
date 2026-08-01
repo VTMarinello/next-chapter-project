@@ -1,113 +1,337 @@
-/* Minimal styling for now. The real layout pass is a later chunk. */
+/* Chunk 9: the real layout and styling pass.
+   Three visually distinct regions - add a recipe, check it over, scale it -
+   with the scaled output as the visual hero, and everything phone-first
+   since a recipe is read on a phone in a kitchen. */
+
+/* ---------- Palette ---------- */
+/* Defined once here instead of typed out as #a4432b in five different
+   places (flagged back in chunk 1's notes as a "fix this in chunk 9").
+   Changing the theme now means changing one line, not hunting through the
+   file for every hex code. */
+:root {
+  --color-rust: #a4432b; /* the app's accent colour - headings, borders, buttons */
+  --color-rust-dark: #7d3220; /* a darker rust for button hover/press */
+  --color-cream: #fdfaf5; /* page background */
+  --color-white: #ffffff; /* card backgrounds */
+  --color-text: #222222; /* body text */
+  --color-text-muted: #666666; /* secondary text - captions, empty states */
+  --color-border: #e4d8c8; /* neutral card borders and input borders */
+  --color-amber: #fdf0d5; /* unparsed-row background - warm, not a red alert */
+  --color-amber-border: #cf9a4a; /* unparsed-row accent stripe and mark */
+}
+
+/* A simpler box model: an element's declared width includes its border and
+   padding instead of adding to it. Without this, every input below would
+   need its own box-sizing rule to avoid overflowing its container. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+/* ---------- Page ---------- */
 
 body {
   font-family: system-ui, sans-serif;
-  max-width: 40rem;
+  max-width: 42rem;
   margin: 2rem auto;
   padding: 0 1rem;
   line-height: 1.5;
-  color: #222222;
-  background-color: #fdfaf5;
+  color: var(--color-text);
+  background-color: var(--color-cream);
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1.75rem;
 }
 
 h1 {
-  color: #a4432b;
+  color: var(--color-rust);
+  margin-bottom: 0.25rem;
 }
 
-/* Just enough styling to make the recipe readable. The real styling pass is chunk 9. */
-#recipe {
-  border: 1px solid #a4432b;
-  border-radius: 4px;
-  padding: 0.75rem 1.25rem;
-  background-color: #ffffff;
+header p {
+  color: var(--color-text-muted);
+  margin-top: 0;
 }
 
-#recipe ul {
-  padding-left: 1.25rem;
+/* The three regions are stacked with consistent spacing between them here,
+   rather than each region carrying its own margin-bottom - one place
+   controls the gap instead of three. */
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
 }
 
-/* Chunk 6: just enough layout for the editor to be usable - rows lined up,
-   fields not overlapping. The real styling pass is chunk 9. */
-#editor {
-  border: 1px solid #a4432b;
-  border-radius: 4px;
-  padding: 0.75rem 1.25rem;
-  margin-bottom: 1.5rem;
-  background-color: #ffffff;
+/* Shared card look for all three regions - white background, a thin border,
+   rounded corners, a little depth. Each region below can still add its own
+   rules on top of this (see .region-hero for the scaled output). */
+.region-card {
+  background-color: var(--color-white);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.region-card h2 {
+  color: var(--color-rust);
+  margin-top: 0;
+  font-size: 1.25rem;
+}
+
+/* ---------- Buttons ---------- */
+/* One shared button look everywhere in the app, so "Paste from clipboard",
+   "Read recipe", "+ Add ingredient", and "Start over" all read as the same
+   kind of thing: something to press. min-height keeps every button at
+   least ~44px tall, a comfortable size to hit with a thumb on a phone. */
+button {
+  font-family: inherit;
+  font-size: 1rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 1.1rem;
+  border: none;
+  border-radius: 6px;
+  background-color: var(--color-rust);
+  color: var(--color-white);
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: var(--color-rust-dark);
+}
+
+/* ---------- Region 1: Add a Recipe ---------- */
+
+#paste-textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  resize: vertical;
+}
+
+.paste-buttons {
+  display: flex;
+  flex-wrap: wrap; /* two buttons side by side on desktop, stacked if the screen is too narrow */
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* ---------- Region 2: Your Recipe (the editor) ---------- */
+
+#review-notice {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+#reset-button {
+  margin-bottom: 1rem;
 }
 
 .editor-field {
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
 }
 
 .editor-field label {
   display: inline-block;
   width: 6rem;
+  font-weight: 600;
+}
+
+.editor-field input[type="text"],
+.editor-field input[type="number"] {
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
 }
 
 .ingredient-row {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
 
+.ingredient-row input {
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
 .ingredient-row .amount-input {
   width: 4rem;
+  flex-shrink: 0;
 }
 
 .ingredient-row .unit-input {
   width: 5rem;
+  flex-shrink: 0;
 }
 
 .ingredient-row .name-input {
   flex-grow: 1;
+  min-width: 0; /* lets the name field shrink instead of forcing the row wider than its card */
 }
 
-/* Chunk 7: paste area (region 1) and the parser's marks in the editor.
-   Just enough to be usable - the real styling pass is chunk 9. */
-#paste-area {
-  border: 1px solid #a4432b;
-  border-radius: 4px;
-  padding: 0.75rem 1.25rem;
-  margin-bottom: 1.5rem;
-  background-color: #ffffff;
+/* The delete "x" needs to be reachable but shouldn't compete visually with
+   the row's actual content, so it's a plain circle with no fill until
+   hovered - present, but quiet. */
+.ingredient-row button {
+  flex-shrink: 0;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: none;
+  color: var(--color-rust);
+  border-radius: 50%;
 }
 
-#paste-textarea {
-  width: 100%;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-
-.paste-buttons {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-}
-
-#review-notice {
-  font-style: italic;
+.ingredient-row button:hover {
+  background-color: var(--color-amber);
 }
 
 /* A row the parser couldn't make sense of - the original text is still in
-   the name field, just flagged for a human to look at. */
+   the name field, just flagged for a human to look at. Amber, not red: this
+   is a "please check this" note, not an error. */
 .unparsed-row {
-  background-color: #fdf0d5;
+  background-color: var(--color-amber);
+  border-left: 4px solid var(--color-amber-border);
+  border-radius: 4px;
+  padding-left: 0.5rem;
 }
 
 .unparsed-mark {
   margin-left: 0.25rem;
+  color: var(--color-amber-border);
 }
 
-/* Chunk 10: empty states and invalid input. Just enough to be noticeable -
-   the real styling pass is chunk 9. */
 .field-message {
-  color: #a4432b;
+  color: var(--color-rust);
   font-size: 0.85rem;
   margin-left: 0.5rem;
 }
 
+/* ---------- Region 3: Scale It (the output) ---------- */
+/* This is the region a cook actually reads from at the counter, so it's
+   built to look different from the editor above it on purpose: a bolder
+   border, more shadow, and bigger type. Nothing here looks like an input
+   box - large plain text is the whole point. */
+
+.region-hero {
+  border: 2px solid var(--color-rust);
+  box-shadow: 0 2px 10px rgba(164, 67, 43, 0.15);
+}
+
+#servings-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--color-border);
+}
+
+#servings-control label {
+  font-weight: 600;
+}
+
+#servings-wanted {
+  width: 4.5rem;
+  min-height: 2.5rem;
+  padding: 0.5rem;
+  font-size: 1.1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+#multiplier-display {
+  font-weight: 600;
+  color: var(--color-rust);
+}
+
+#recipe h2 {
+  color: var(--color-rust);
+  font-size: 1.75rem;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+
+/* The "Originally serves N" line - useful context, but secondary to the
+   scaled amounts below it, so it stays small and muted. */
+#recipe > p {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+}
+
+#recipe ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+/* Bigger type than anywhere else in the app, and no box, border, or
+   background on individual lines - reading, not editing. A thin divider
+   between lines instead of a bullet keeps a long ingredient list easy to
+   scan without looking like a form. */
+#recipe li {
+  font-size: 1.2rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+#recipe li:last-child {
+  border-bottom: none;
+}
+
+/* The quiet "(not scaled)" note on lines like "salt to taste" - smaller and
+   muted than the ingredient text next to it, so it reads as a footnote, not
+   part of the amount. */
+.not-scaled-note {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
 .empty-state-message {
   font-style: italic;
-  color: #555555;
+  color: var(--color-text-muted);
+}
+
+/* ---------- Phone layout ---------- */
+/* A recipe is read on a phone in a kitchen. Below this width, ingredient
+   rows stack top to bottom instead of staying in a cramped horizontal row -
+   nothing should ever need to scroll sideways to be read or edited. */
+@media (max-width: 600px) {
+  .ingredient-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ingredient-row .amount-input,
+  .ingredient-row .unit-input,
+  .ingredient-row .name-input {
+    width: 100%;
+  }
+
+  .ingredient-row button {
+    align-self: flex-end;
+  }
+
+  .editor-field label {
+    display: block;
+    width: auto;
+    margin-bottom: 0.25rem;
+  }
 }

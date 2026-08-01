@@ -61,6 +61,19 @@ function formatIngredientText(ingredient) {
 function renderIngredientRow(ingredient) {
   const row = document.createElement("li");
   row.textContent = formatIngredientText(ingredient);
+
+  // Chunk 9: a quiet note for lines with nothing to scale ("salt to
+  // taste", or a line the parser couldn't read), so a missing scaled
+  // number reads as expected behaviour rather than a bug. It's a separate
+  // span, not part of the same text, so style.css can style it smaller and
+  // muted without touching the rest of the line.
+  if (ingredient.amount === null) {
+    const note = document.createElement("span");
+    note.className = "not-scaled-note";
+    note.textContent = " (not scaled)";
+    row.appendChild(note);
+  }
+
   return row;
 }
 
