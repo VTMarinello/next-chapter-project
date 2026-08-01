@@ -547,21 +547,27 @@ button {
   border: 1px solid rgba(0, 0, 0, 0.3);
   min-height: 42px;
   position: relative;
-  /* The stack, from the inside out:
-       1. a bright inner line along the top — light catching the
-          top edge of a raised surface
+  /* Elevation done with light, not with a second shape.
+     An earlier version put a solid 4px block of a much darker
+     colour underneath as a fake "side". Because that colour was a
+     different hue from the face, it didn't read as an edge — it
+     read as a second rectangle sitting behind the button with a
+     hard seam between them.
+     The rule that fixes it: a shadow has to be the SAME colour
+     family as the surface casting it, softened and semi
+     transparent. Everything below is a tinted black or white at
+     low opacity, blurred:
+       1. a bright inner line along the top edge — light catching
+          a raised surface
        2. a soft inner shade along the bottom — the face curving
           away from that light
-       3. a solid 4px block of dark colour underneath, with no
-          blur: this is the button's SIDE. It's what makes it read
-          as an object with height rather than a rectangle with a
-          shadow
-       4. a real cast shadow on the surface below it */
+       3. a tight contact shadow, holding it to the page
+       4. a wider, softer cast shadow for the height */
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.22),
-    0 4px 0 #8f3419,
-    0 7px 14px -4px rgba(140, 50, 26, 0.5);
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.14),
+    0 1px 2px rgba(122, 44, 22, 0.28),
+    0 6px 16px -6px rgba(122, 44, 22, 0.55);
   transition: filter 0.14s ease, transform 0.06s ease, box-shadow 0.06s ease;
 }
 
@@ -569,24 +575,21 @@ button:hover {
   filter: brightness(1.05);
 }
 
-/* Pressing it drops the face onto its own side: move down by 3px
-   and shorten the side to 1px, so the total height loses exactly
-   what the movement gained. The button compresses rather than
-   sliding around. */
+/* Pressing it settles the button onto the page: it moves down,
+   the cast shadow shrinks to almost nothing, and the inner shade
+   flips to the top so the face reads as pushed in. */
 button:active {
-  transform: translateY(3px);
+  transform: translateY(1px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    inset 0 -2px 4px rgba(0, 0, 0, 0.25),
-    0 1px 0 #8f3419,
-    0 2px 5px -2px rgba(140, 50, 26, 0.45);
+    inset 0 2px 5px rgba(0, 0, 0, 0.22),
+    0 1px 1px rgba(122, 44, 22, 0.22);
 }
 
 button:focus-visible {
   outline: none;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.45),
-    0 4px 0 #8f3419,
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 6px 16px -6px rgba(122, 44, 22, 0.55),
     0 0 0 3px var(--accent-wash);
 }
 
@@ -597,8 +600,8 @@ button:focus-visible {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.9),
     inset 0 -2px 4px rgba(33, 26, 21, 0.06),
-    0 3px 0 #ded2c3,
-    0 5px 10px -4px rgba(33, 26, 21, 0.22);
+    0 1px 1px rgba(33, 26, 21, 0.09),
+    0 5px 12px -6px rgba(33, 26, 21, 0.3);
 }
 
 .button-secondary:hover {
@@ -607,11 +610,10 @@ button:focus-visible {
 }
 
 .button-secondary:active {
-  transform: translateY(2px);
+  transform: translateY(1px);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.7),
-    0 1px 0 #ded2c3,
-    0 2px 4px -2px rgba(33, 26, 21, 0.2);
+    inset 0 2px 4px rgba(33, 26, 21, 0.12),
+    0 1px 1px rgba(33, 26, 21, 0.08);
 }
 
 .button-quiet {

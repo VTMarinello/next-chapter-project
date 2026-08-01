@@ -879,3 +879,13 @@ as for the layout i think th page is cluttered enough, i would reccmond them sav
 ### 2026-07-31 23:10:12
 
  Well, we built the same recipes part so we can't add it if we need a section for what I build next. I'd have to come up with some other feature that we have yet to add right obviously, any changes they don't represent the project as it is such as if there's five files in our lock now we just need to change it to reflect the current bill. I think the SVG animation is worth mentioning, but not as a big highlighted point, it was something that was fun to do, but it's not necessarily a main feature of the app. Or just an exercise and having to prompt you a lot to position SVG assets I got off the Internet. Will handle the quiz after this to test nine hours and stuff I want to get to read me I have to submit soon as long as you can verify one last time we were allowed to use any of the few libraries that we did, and that it wasn't something we were supposed to do then yes we can change that line to represent the new thing. If we have GSA stuff in here, we don't need you can just get rid of it obviously as long as we're not using it also just make sure to ignore covers the files it's supposed to, the screenshots that we took and put into the doc folder and you can get rid of the demo page as I don't think we're using it, if the asset exist in there, make sure you pull it out but as being an actual HTML page with its own text about wire versus clean and stuff, we obviously don't need that anymore
+
+---
+
+### 2026-07-31 23:15:47
+
+the only screenshot in docs now shows how the read recupe button and scale itbuttons aree ugly. they attmept a 3d sort of effect but appear more as a button with another button behind it and a thin line seperating them. the past form clipbpard button looks chill because it has the right color differencnto appear like a real shadow. right sort of opacity too.
+
+also what do you mean our code noted stops or gaps at item 10? we only had ten sections we did no? shouldnt it stop there? small changes we have made since, arent quite full arcs of the build. 
+
+but havent we also not put in the section it said we need about what we would add? feature wise with more time?
