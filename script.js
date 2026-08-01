@@ -27,7 +27,12 @@ const exampleRecipe = {
 // Turns one ingredient object into a single line of readable text.
 // Skips the amount and unit when they're missing, so "Salt and pepper to
 // taste" doesn't come out as "null  Salt and pepper to taste".
-function formatIngredientText(ingredient) {
+// Just the measurement part of a line — "2 cups", "9 tbsp 1 tsp", "4-6
+// cloves" — with no ingredient name. Split out from formatIngredientText so
+// the output list can put the quantity and the name in separate elements and
+// line every quantity up in its own column. Returns "" when there is nothing
+// to measure ("Salt and pepper to taste").
+function formatIngredientQuantity(ingredient) {
   const textParts = [];
   const hasRange = ingredient.amountMax !== null && ingredient.amountMax !== undefined;
 
@@ -51,27 +56,50 @@ function formatIngredientText(ingredient) {
     textParts.push(ingredient.unit);
   }
 
-  textParts.push(ingredient.name);
-
   return textParts.join(" ");
+}
+
+// The whole line as one string — quantity then name. Kept because it's the
+// plain-text form of an ingredient, useful anywhere the two parts don't need
+// to be styled separately.
+function formatIngredientText(ingredient) {
+  const quantity = formatIngredientQuantity(ingredient);
+
+  if (quantity === "") {
+    return ingredient.name;
+  }
+
+  return quantity + " " + ingredient.name;
 }
 
 // Builds the <li> for one ingredient. Kept separate from renderRecipe so
 // each function only has one job: this one draws a single row.
 function renderIngredientRow(ingredient) {
   const row = document.createElement("li");
-  row.textContent = formatIngredientText(ingredient);
+
+  // The quantity and the name go in separate spans rather than one string,
+  // so style.css can give the quantity its own fixed column. Every amount
+  // then lines up vertically down the list, the way a printed recipe card
+  // sets them — the numbers are what you're scanning for while cooking, and
+  // they're much easier to read down a straight edge.
+  const quantity = document.createElement("span");
+  quantity.className = "qty";
+  quantity.textContent = formatIngredientQuantity(ingredient);
+  row.appendChild(quantity);
+
+  const name = document.createElement("span");
+  name.className = "ing";
+  name.textContent = ingredient.name;
+  row.appendChild(name);
 
   // Chunk 9: a quiet note for lines with nothing to scale ("salt to
   // taste", or a line the parser couldn't read), so a missing scaled
-  // number reads as expected behaviour rather than a bug. It's a separate
-  // span, not part of the same text, so style.css can style it smaller and
-  // muted without touching the rest of the line.
+  // number reads as expected behaviour rather than a bug.
   if (ingredient.amount === null) {
     const note = document.createElement("span");
     note.className = "not-scaled-note";
-    note.textContent = " (not scaled)";
-    row.appendChild(note);
+    note.textContent = "not scaled";
+    name.appendChild(note);
   }
 
   return row;
@@ -592,6 +620,15 @@ function renderMultiplier(multiplier, canScale) {
   // now" — the inline message next to the bad box already explains that, so
   // the multiplier is left blank instead of showing a misleading number.
   if (!canScale) {
+    multiplierDisplay.textContent = "";
+    return;
+  }
+
+  // "×1" is noise: it appears whenever the two serving counts happen to
+  // match, which is the app's own starting state, and it tells the user
+  // nothing they can't see from the two identical numbers beside it. The
+  // multiplier is only worth showing once it's actually doing something.
+  if (multiplier === 1) {
     multiplierDisplay.textContent = "";
     return;
   }

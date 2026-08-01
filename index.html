@@ -9,111 +9,124 @@
   </head>
 
   <body>
-    <header>
+    <header class="page-header">
       <h1>Recipe Scaler</h1>
-      <p>Enter how many people you're cooking for, and see the right ingredient amounts.</p>
+      <p>Cook any recipe for any number of people, in amounts you can actually measure.</p>
     </header>
 
-    <main>
-      <!-- Region 1: paste a recipe in as plain text. script.js parses it and
-           fills in the editor rows below (region 2). The textarea is the
-           real way in - pasting with Ctrl/Cmd+V always works here. The
-           "Paste from clipboard" button is only a shortcut for that same
-           textarea; see handlePasteButton() in script.js. -->
-      <section id="paste-area" class="region-card">
-        <h2>Add a Recipe</h2>
-        <textarea
-          id="paste-textarea"
-          rows="8"
-          placeholder="Paste your recipe here…"
-        ></textarea>
-        <div class="paste-buttons">
-          <!-- "Read recipe" is the primary action and is styled as such.
-               "Paste from clipboard" is only a shortcut, and may not work at
-               all over file://, so it deliberately looks secondary. -->
-          <button type="button" id="read-recipe-button">Read recipe</button>
-          <button type="button" id="paste-button" class="button-secondary">
-            Paste from clipboard
+    <!-- Two columns on a wide screen: the recipe you're editing on the left,
+         the scaled result on the right where it stays in view while you type.
+         Stacks to one column on a phone. -->
+    <main class="workspace">
+      <!-- ============ LEFT: the recipe you're working on ============ -->
+      <div class="column-work">
+        <!-- Region 2 in PLAN.md's flow: the editor. The single surface a
+             recipe ends up in, whether it was typed or pasted. Pre-filled by
+             script.js with exampleRecipe on page load. -->
+        <section id="editor" class="panel">
+          <div class="panel-head">
+            <h2 class="section-label">Your recipe</h2>
+          </div>
+
+          <!-- Filled in by script.js after a paste is read, e.g. "Read 9 of
+               10 lines. Check the marked one." Empty until then. -->
+          <p id="review-notice"></p>
+
+          <div class="editor-field">
+            <label for="recipe-name">Recipe</label>
+            <input type="text" id="recipe-name" placeholder="Untitled recipe" />
+          </div>
+
+          <div class="editor-field">
+            <label for="recipe-servings">Makes</label>
+            <input type="number" id="recipe-servings" min="1" />
+            <span class="field-suffix">servings</span>
+            <!-- Chunk 10: filled in by script.js when this box is blank, zero,
+                 negative, or not a number. Empty the rest of the time. -->
+            <span id="recipe-servings-message" class="field-message"></span>
+          </div>
+
+          <!-- Column headings for the rows script.js draws below. Static
+               markup because they never change, while the rows themselves get
+               redrawn constantly. aria-hidden because every generated input
+               carries its own aria-label. -->
+          <div class="ingredient-heads" aria-hidden="true">
+            <span>Amount</span>
+            <span>Unit</span>
+            <span>Ingredient</span>
+          </div>
+
+          <!-- Filled in by script.js with one row per ingredient -->
+          <div id="ingredient-rows"></div>
+
+          <button type="button" id="add-ingredient-button" class="button-quiet">
+            + Add ingredient
           </button>
-        </div>
-      </section>
 
-      <!-- Region 2: the editor. The single surface a user types a recipe into.
-           Pre-filled by script.js with exampleRecipe on page load. -->
-      <section id="editor" class="region-card">
-        <h2>Your Recipe</h2>
+          <!-- Region 1 in PLAN.md's flow, folded away by default. It used to
+               be a large permanently-open textarea at the top of the page —
+               the biggest and emptiest thing on screen, above the content it
+               feeds. Collapsed, it stays one click away without dominating.
+               <details> is plain HTML, so this needs no JavaScript. -->
+          <details class="paste-drawer" id="paste-area">
+            <summary>Paste a recipe instead</summary>
+            <div class="paste-drawer-body">
+              <p class="hint">
+                Paste your ingredient list and each line becomes a row above.
+                Anything it can't read is flagged, never dropped.
+              </p>
+              <textarea
+                id="paste-textarea"
+                rows="7"
+                placeholder="2 cups flour&#10;1 1/2 cups whole milk&#10;3 large eggs&#10;Salt and pepper to taste"
+              ></textarea>
+              <div class="paste-buttons">
+                <!-- "Read recipe" is the primary action. "Paste from
+                     clipboard" is only a shortcut and may not work at all
+                     over file://, so it deliberately looks secondary. -->
+                <button type="button" id="read-recipe-button">Read recipe</button>
+                <button type="button" id="paste-button" class="button-secondary">
+                  Paste from clipboard
+                </button>
+              </div>
+            </div>
+          </details>
 
-        <!-- Filled in by script.js after a paste is read, e.g. "Read 9 of
-             10 lines. Check the marked one." Empty until then. -->
-        <p id="review-notice"></p>
+          <!-- Deliberately last and styled quietly: this is the one
+               irreversible action on the page, so it should not sit where the
+               eye lands first. It used to be a large filled button at the top
+               of this panel. -->
+          <div class="danger-zone">
+            <button type="button" id="reset-button" class="button-danger">
+              Start over
+            </button>
+          </div>
+        </section>
+      </div>
 
-        <div class="editor-field">
-          <label for="recipe-name">Recipe name</label>
-          <input type="text" id="recipe-name" />
-        </div>
+      <!-- ============ RIGHT: the scaled result ============ -->
+      <div class="column-result">
+        <!-- Region 3: sticky, so the result stays on screen while you edit
+             the recipe beside it. This is the part read at a counter while
+             cooking, so it gets the most typographic weight on the page. -->
+        <section id="scale-output" class="panel panel-result">
+          <div class="scale-control">
+            <label for="servings-wanted">Cooking for</label>
+            <input type="number" id="servings-wanted" value="4" min="1" />
+            <span class="field-suffix">people</span>
+            <!-- Filled in by script.js with something like "×1.5", and left
+                 empty when the multiplier is exactly 1. -->
+            <span id="multiplier-display"></span>
+            <!-- Chunk 10: filled in by script.js when this box is blank, zero,
+                 negative, or not a number. Empty the rest of the time. -->
+            <span id="servings-wanted-message" class="field-message"></span>
+          </div>
 
-        <div class="editor-field">
-          <label for="recipe-servings">Makes</label>
-          <input type="number" id="recipe-servings" min="1" />
-          <span class="field-suffix">servings</span>
-          <!-- Chunk 10: filled in by script.js when this box is blank, zero,
-               negative, or not a number. Empty the rest of the time. -->
-          <span id="recipe-servings-message" class="field-message"></span>
-        </div>
-
-        <!-- Column headings for the rows script.js draws below. Static markup
-             rather than something JS generates, because they never change and
-             the rows themselves get redrawn constantly. aria-hidden because
-             each generated input already carries its own accessible label. -->
-        <div class="ingredient-heads" aria-hidden="true">
-          <span>Amount</span>
-          <span>Unit</span>
-          <span>Ingredient</span>
-        </div>
-
-        <!-- Filled in by script.js with one row per ingredient -->
-        <div id="ingredient-rows"></div>
-
-        <button type="button" id="add-ingredient-button" class="button-secondary">
-          + Add ingredient
-        </button>
-
-        <!-- Chunk 8: the recipe is saved in this browser automatically as it's
-             edited (see saveRecipes() in script.js). This button is the way
-             back to the pancake example for anyone who has saved a mess.
-             Deliberately placed last and styled quietly: it is the one
-             irreversible action on the page, so it should not sit in the
-             position the eye lands on first. -->
-        <div class="danger-zone">
-          <button type="button" id="reset-button" class="button-danger">
-            Start over (reset to example)
-          </button>
-        </div>
-      </section>
-
-      <!-- Region 3: the scaled output. Wraps the "cooking for" control and
-           the read-only recipe display in one card, styled as the visual
-           hero of the page (chunk 9) - this is what's read at the counter
-           while cooking, so it's the biggest and boldest of the three
-           regions. Wrapping an existing div in a new section doesn't change
-           its id, so script.js's getElementById calls still find it. -->
-      <section id="scale-output" class="region-card region-hero">
-        <h2>Scale It</h2>
-
-        <div id="servings-control">
-          <label for="servings-wanted">Cooking for</label>
-          <input type="number" id="servings-wanted" value="4" min="1" />
-          <span>people</span>
-          <!-- Filled in by script.js with something like "×1.5" -->
-          <span id="multiplier-display"></span>
-          <!-- Chunk 10: filled in by script.js when this box is blank, zero,
-               negative, or not a number. Empty the rest of the time. -->
-          <span id="servings-wanted-message" class="field-message"></span>
-        </div>
-
-        <!-- Starts empty on purpose. script.js fills this in with the recipe. -->
-        <div id="recipe"></div>
-      </section>
+          <!-- Starts empty on purpose. script.js fills this in with the
+               scaled recipe. -->
+          <div id="recipe"></div>
+        </section>
+      </div>
     </main>
 
     <!-- Loaded at the end of the body so the HTML above already exists when the script runs -->
