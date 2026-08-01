@@ -213,3 +213,21 @@ yes, make sure you  also account for whatever architectural changes need to be m
 ### 2026-07-31 17:16:59
 
 go for it
+
+---
+
+### 2026-07-31 17:24:58
+
+html right. it controls the text, and input fields. I dont know what you mean about chunk 6, but for them to input any data, our html needs to be able to receive it to send to to JS and do stuff to it
+
+---
+
+### 2026-07-31 17:27:46
+
+that wasnt very obvious to me because the page currently just displays it as text and I gues you injected that text via JS? i mean we currently dont have input fields on the page, so it all just looks like static text... no way for me to differentiate it from imaginary user text being input and actual static html
+
+---
+
+### 2026-07-31 17:32:01
+
+i see the example recipe constant in script.js now. I mean i assume eventually we wil get rid of that. anyway proceed to step 3, possibly 4 as well.

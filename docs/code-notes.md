@@ -229,3 +229,149 @@ is the foundation everything else in the plan builds on.
    check.
 3. Suppose chunk 3 calls `renderRecipe` a second time after the user changes the servings number.
    What would actually appear on screen, and why?
+
+---
+
+## Chunk 3 — Scale ingredients by servings
+
+**What it does for the user:**
+The recipe now actually responds to you. Next to the "Cooking for" box there's a number input
+starting at 4, and a small label like "×1.5" beside it. Change the number — say, from 4 to 6 — and
+instantly every ingredient amount on screen recalculates: "2 cups flour" becomes "3 cups flour,"
+"1.5 cups milk" becomes "2.25 cups milk," and so on. This is the moment the app stops being a static
+recipe card and starts doing the one thing it exists to do.
+
+**How it works, step by step:**
+
+1. The page loads. Near the bottom of `script.js`, `handleServingsInputChange()` gets called once by
+   name (line 160), the same "defining it doesn't run it, calling it does" pattern from chunks 1 and
+   2. This draws the recipe scaled to whatever the input currently holds — 4.
+2. Just above that, `servingsInput.addEventListener("input", handleServingsInputChange)` (line 157)
+   sets up a standing instruction: "every time this input fires an *input* event, run
+   `handleServingsInputChange` again." An **event** is something that happens on the page — a click,
+   a keystroke, a page load. An **event listener** is code that says "when that happens, run this
+   function." The `"input"` event fires on every single keystroke or click that changes the box's
+   value, not just when you click away from it.
+3. You type a `6` into the box. The `input` event fires, and `handleServingsInputChange` runs.
+4. It looks up the input again, reads its current text with `.value`, and converts that text to an
+   actual number with `Number(...)` — `.value` is always a string, even for a number input, so `"6"`
+   has to become `6` before math can happen to it.
+5. It calls `renderRecipe(exampleRecipe, servingsWanted)`, passing in the original hard-coded recipe
+   and the number you just typed.
+6. Inside `renderRecipe`, the very first line is `recipeContainer.replaceChildren()` — it empties out
+   the `#recipe` box completely before drawing anything new. (Why this line has to be here now is its
+   own section below.)
+7. `calculateMultiplier(servingsWanted, recipe.servings)` divides what you asked for by what the
+   recipe normally makes — `6 / 4 = 1.5`. This one number, the **multiplier**, is what every amount
+   gets multiplied by.
+8. `renderMultiplier(1.5)` writes `"×1.5"` into the small `<span id="multiplier-display">` next to
+   the input, so you can see the ratio being applied.
+9. `getScaledIngredients(recipe.ingredients, 1.5)` runs `scaleIngredient` on every ingredient in the
+   list and hands back a brand-new list of scaled ingredients (details below).
+10. `renderRecipe` then builds the heading, the "Originally serves 4" line, and loops over the
+    *scaled* list, building one `<li>` per ingredient with `renderIngredientRow` — exactly as chunk 2
+    did, just fed different numbers.
+11. The browser redraws instantly. You see the new amounts. Type another digit and the whole sequence
+    — event fires, read the box, recalculate, clear the old recipe, redraw — happens again from
+    scratch.
+
+**The pieces:**
+
+| Thing | Where | What it's for |
+|---|---|---|
+| `<input type="number" id="servings-wanted">` | index.html:20 | Where the user types the serving count; starts at `4` |
+| `<span id="multiplier-display">` | index.html:23 | Empty on load; filled with text like `×1.5` by `renderMultiplier` |
+| `calculateMultiplier(wanted, makes)` | script.js:87-89 | Divides wanted servings by the recipe's normal servings — the one ratio everything else uses |
+| `scaleAmount(amount, multiplier)` | script.js:93-95 | Multiplies one number by the multiplier |
+| `scaleIngredient(ingredient, multiplier)` | script.js:104-121 | Builds and returns a scaled *copy* of one ingredient object |
+| `getScaledIngredients(ingredients, multiplier)` | script.js:125-131 | Runs `scaleIngredient` over the whole array, returns a new array |
+| `roundToTwoDecimals(number)` | script.js:137-139 | Tidies the multiplier for display only — doesn't touch the actual scaling math |
+| `renderMultiplier(multiplier)` | script.js:143-146 | Writes `×1.5` into the multiplier span |
+| `handleServingsInputChange()` | script.js:150-154 | Reads the input, converts it to a number, triggers a full re-render |
+| `addEventListener("input", ...)` | script.js:157 | Wires the input box to `handleServingsInputChange` so typing triggers scaling |
+| `recipeContainer.replaceChildren()` | script.js:59 | Empties `#recipe` before every redraw |
+
+**Terms introduced:**
+
+- **event** — something that happens on the page that code can react to: a click, a keystroke, the
+  page finishing loading.
+- **event listener** — code registered to run automatically whenever a specific event happens on a
+  specific element. `addEventListener("input", handleServingsInputChange)` means "whenever this box's
+  value changes, call this function."
+- **`.value`** — the current text sitting inside an input box. Always a string of characters, even
+  when the input is typed as numbers, which is why `Number(...)` has to convert it before doing math.
+- **`Number(...)`** — converts text into an actual number JavaScript can do arithmetic with.
+  `Number("6")` is `6`; `Number("")` (an empty box) is `0`.
+- **copy vs. reference** — when a variable holds an object, it doesn't hold the object's data
+  directly, it holds a pointer to where that data lives (a *reference*). Two variables pointing at the
+  same object are pointing at the *same* data — change one and you've changed both. A *copy* is a
+  brand-new object with its own data, so changing the copy leaves the original untouched. This
+  distinction is the entire reason `scaleIngredient` is written the way it is — see below.
+
+**Why `replaceChildren()` matters now:**
+In chunk 2, `renderRecipe` only ever ran once, so it was safe to just keep calling `appendChild` —
+the container started empty and there was nothing to clean up. Now `renderRecipe` runs again on every
+keystroke. Without `replaceChildren()`, each run would `appendChild` a second heading, a second
+"Originally serves 4" line, and a second ingredient list *underneath* the first — the old recipe
+wouldn't disappear, a new one would just stack on top of it. Type three digits and you'd have three
+copies of the recipe glued together on the page. `replaceChildren()` called with nothing removes
+everything currently inside `#recipe` first, so every redraw starts from a clean, empty box. This is
+a bug that was headed off before it ever happened — chunk 2's own notes flagged it as something chunk
+3 would need to fix, and the comment on script.js:53-58 spells out exactly that reasoning.
+
+**Why `scaleIngredient` returns a new object instead of changing the original — the important idea in
+this chunk:**
+`scaleIngredient` never writes `ingredient.amount = ...`. Instead it builds and returns a completely
+new `{amount, unit, name}` object, leaving the ingredient it was given untouched. Here's concretely
+what would break if it didn't: `exampleRecipe` is one object living in memory, and
+`recipe.ingredients` are the *actual* ingredient objects inside it — not copies. If `scaleIngredient`
+mutated `ingredient.amount` directly, then scaling to 6 servings would overwrite flour's `amount`
+field in `exampleRecipe` itself, permanently, from `2` to `3`. Scale back down to 4 afterward, and
+`calculateMultiplier` would produce `4/4 = 1`, so the code would multiply the *already-scaled* `3` by
+`1` and get `3` — not `2`. The original recipe's "for 4 people" amounts would be gone, overwritten,
+with no way to get back to the true numbers except reloading the page. Every scale operation would
+compound on top of whatever the last one left behind, and the multiplier shown would silently stop
+matching the amounts on screen. `exampleRecipe` needs to stay the one unchanged source of truth every
+single time you re-scale, and the only way to guarantee that is for `scaleIngredient` (and
+`getScaledIngredients`, which just runs it over the whole list) to hand back fresh copies instead of
+editing what it was given.
+
+**Worth knowing:**
+
+- **A blank input currently multiplies everything by zero.** Clear the box entirely and `Number("")`
+  is `0`, so `calculateMultiplier` computes `0 / 4 = 0`, and every ingredient amount scales to `0`.
+  Nothing crashes — the page just shows a recipe made of zeroes with `×0` next to it. `min="1"` is on
+  the input tag, but it's cosmetic only; nothing in the JavaScript actually checks the value before
+  using it. This is explicitly deferred to chunk 10 ("Handle empty and invalid input"), so it's
+  expected right now, not a surprise — but it's worth being able to say out loud why it happens.
+- **Amounts still display as raw decimals.** Scale to 6 servings and milk shows `2.25 cups milk`, not
+  `2¼ cups`. `formatIngredientText` (from chunk 2) just prints whatever number it's given — it has no
+  idea how to turn a decimal into a fraction. That translation is chunk 4's entire job.
+- **`getScaledIngredients` isn't in `PLAN.md`'s function table.** The plan's "Scaling" section lists
+  `calculateMultiplier`, `scaleAmount`, `scaleRange`, and `scaleIngredient` — no
+  `getScaledIngredients`. It was added while building because something has to loop `scaleIngredient`
+  over the whole ingredient array and hand back the new list, and that's a reasonable, small,
+  single-job function in the spirit of the project's own style rules. Worth flagging as a deliberate
+  deviation from the plan rather than pretending the plan predicted it — the plan is a living
+  document, not a contract.
+- **The multiplier shown and the multiplier used for math are not the same value.** `renderMultiplier`
+  rounds to two decimals purely for the on-screen `×1.5` label; the actual scaling in `scaleAmount`
+  always uses the full, unrounded `wanted / makes` result. That's the right call — rounding the
+  display doesn't corrupt the arithmetic — but it's easy to assume they're the same number if you
+  haven't read both functions.
+- **`min="1"` on the input is decorative.** HTML5 min/max validation only kicks in on form
+  submission, and there is no `<form>` here. It does not stop the `input` event firing with `0`, a
+  negative number, or an empty string.
+- **Fractional servings are possible and unguarded.** The input has no `step="1"`, so a user can type
+  `4.5` and get a multiplier of `1.125`. Lands in chunk 10 with the rest of input validation.
+
+**Three questions an interviewer could ask:**
+
+1. Walk me through what would appear on screen if `replaceChildren()` were deleted from
+   `renderRecipe`, and then you typed `6` into the servings box one digit at a time.
+2. If `scaleIngredient` set `ingredient.amount = scaleAmount(...)` directly instead of returning a new
+   object, describe exactly what the flour amount would show if you scaled to 8 servings and then
+   changed the box back down to 4.
+3. The `input` event fires on every keystroke, not just when you finish typing. What actually happens,
+   step by step, if you type "12" into the servings box — does the recipe scale for "1" at any point,
+   and does that matter?
