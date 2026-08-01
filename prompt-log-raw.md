@@ -829,3 +829,9 @@ One thing. So I added a new screenshot to the docs folder. The layout looks nice
 ### 2026-07-31 22:30:37
 
  we're missing the top portion of the graphic completely, where the spoon is. The spoon should be visible in the upright position, and after the button is clicked in the function happens when the spoon comes down only then isn't it fully visible. It's missing a significant part of the graphic. I need you to fix that.
+
+---
+
+### 2026-07-31 22:33:33
+
+The sizing was right, but I added a new HTML  file in the docs folder with an upgraded version of the animation. Use that one instead. Did you change the application I can scale down recipes as well as up??

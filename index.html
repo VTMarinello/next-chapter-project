@@ -155,8 +155,34 @@
           </div>
 
           <div class="stage" aria-hidden="true">
-            <svg viewBox="95 115 610 345" class="scene" role="presentation">
+            <svg viewBox="85 50 630 430" class="scene" role="presentation">
               <defs>
+                <!-- Depth. feDropShadow paints a blurred, offset copy of a
+                     shape behind itself: dy pushes it down, stdDeviation
+                     softens it. Applied to the table, the apples and the
+                     spoon so they sit above the surface rather than being
+                     painted flat onto it.
+
+                     The x/y/width/height give the filter room to draw
+                     outside the shape's own box — without it the shadow
+                     would be clipped at the edges. -->
+                <filter id="drop-shadow" x="-25%" y="-25%" width="150%" height="150%">
+                  <feDropShadow dx="0" dy="10" stdDeviation="6"
+                                flood-color="#000000" flood-opacity="0.3" />
+                </filter>
+
+                <!-- Bloom for the sparkles. feGaussianBlur makes a soft
+                     blurred copy, then feMerge stacks the original back on
+                     top of it — so the sparkle keeps its crisp shape but
+                     throws light around itself. -->
+                <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="8" result="coloredBlur" />
+                  <feMerge>
+                    <feMergeNode in="coloredBlur" />
+                    <feMergeNode in="SourceGraphic" />
+                  </feMerge>
+                </filter>
+
                 <!-- Artwork only. These path strings are the drawn shape of
                      an apple — nothing here is logic. -->
                 <g id="apple">
@@ -177,12 +203,12 @@
                 <!-- A four-pointed sparkle, drawn with curves so the points
                      taper rather than ending in hard corners. -->
                 <g id="sparkle-asset">
-                  <path d="M 0,-15 Q 2,-2 15,0 Q 2,2 0,15 Q -2,2 -15,0 Q -2,-2 0,-15 Z" fill="#F2C15C" />
+                  <path d="M 0,-15 Q 2,-2 15,0 Q 2,2 0,15 Q -2,2 -15,0 Q -2,-2 0,-15 Z" fill="#FFC107" filter="url(#glow)" />
                 </g>
               </defs>
 
               <!-- The table the apples sit on -->
-              <g id="table">
+              <g id="table" filter="url(#drop-shadow)">
                 <rect x="150" y="345" width="20" height="100" rx="3" fill="#5c3418" />
                 <rect x="630" y="345" width="20" height="100" rx="3" fill="#5c3418" />
                 <rect x="100" y="320" width="600" height="25" rx="5" fill="#a05a2c" />
@@ -200,31 +226,31 @@
                    transform outright, so without the nesting every apple
                    would stack at the origin. -->
               <g id="cloned-items">
-                <g transform="translate(200, 315)"><g class="pop" style="--i: 0"><use href="#apple" /></g></g>
-                <g transform="translate(280, 315)"><g class="pop" style="--i: 3"><use href="#apple" /></g></g>
-                <g transform="translate(360, 315)"><g class="pop" style="--i: 6"><use href="#apple" /></g></g>
-                <g transform="translate(440, 315)"><g class="pop" style="--i: 1"><use href="#apple" /></g></g>
-                <g transform="translate(520, 315)"><g class="pop" style="--i: 8"><use href="#apple" /></g></g>
-                <g transform="translate(600, 315)"><g class="pop" style="--i: 4"><use href="#apple" /></g></g>
-                <g transform="translate(240, 280)"><g class="pop" style="--i: 9"><use href="#apple" /></g></g>
-                <g transform="translate(320, 280)"><g class="pop" style="--i: 2"><use href="#apple" /></g></g>
-                <g transform="translate(480, 280)"><g class="pop" style="--i: 7"><use href="#apple" /></g></g>
-                <g transform="translate(560, 280)"><g class="pop" style="--i: 5"><use href="#apple" /></g></g>
+                <g transform="translate(200, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 0"><use href="#apple" /></g></g>
+                <g transform="translate(280, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 3"><use href="#apple" /></g></g>
+                <g transform="translate(360, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 6"><use href="#apple" /></g></g>
+                <g transform="translate(440, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 1"><use href="#apple" /></g></g>
+                <g transform="translate(520, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 8"><use href="#apple" /></g></g>
+                <g transform="translate(600, 315)" filter="url(#drop-shadow)"><g class="pop" style="--i: 4"><use href="#apple" /></g></g>
+                <g transform="translate(240, 280)" filter="url(#drop-shadow)"><g class="pop" style="--i: 9"><use href="#apple" /></g></g>
+                <g transform="translate(320, 280)" filter="url(#drop-shadow)"><g class="pop" style="--i: 2"><use href="#apple" /></g></g>
+                <g transform="translate(480, 280)" filter="url(#drop-shadow)"><g class="pop" style="--i: 7"><use href="#apple" /></g></g>
+                <g transform="translate(560, 280)" filter="url(#drop-shadow)"><g class="pop" style="--i: 5"><use href="#apple" /></g></g>
               </g>
 
               <!-- Sparkles, sitting just above the apples. Pulled down and in
                    from the original sketch so the scene crops to a band with
                    no empty sky above it. -->
               <g id="sparkles-container">
-                <g transform="translate(245, 262)"><g class="sparkle" style="--i: 0"><use href="#sparkle-asset" /></g></g>
-                <g transform="translate(340, 236)"><g class="sparkle" style="--i: 3"><use href="#sparkle-asset" /></g></g>
-                <g transform="translate(430, 252)"><g class="sparkle" style="--i: 1"><use href="#sparkle-asset" /></g></g>
-                <g transform="translate(525, 232)"><g class="sparkle" style="--i: 4"><use href="#sparkle-asset" /></g></g>
-                <g transform="translate(615, 258)"><g class="sparkle" style="--i: 2"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(250, 220)"><g class="sparkle" style="--i: 0"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(350, 180)"><g class="sparkle" style="--i: 3"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(480, 250)"><g class="sparkle" style="--i: 1"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(400, 220)"><g class="sparkle" style="--i: 4"><use href="#sparkle-asset" /></g></g>
+                <g transform="translate(310, 260)"><g class="sparkle" style="--i: 2"><use href="#sparkle-asset" /></g></g>
               </g>
 
               <!-- The one apple that's always there, before any scaling -->
-              <g transform="translate(400, 310)">
+              <g transform="translate(400, 310)" filter="url(#drop-shadow)">
                 <use href="#apple" />
               </g>
 
@@ -233,12 +259,12 @@
                    pressed.
 
                    The crop above has to make room for that raised position:
-                   pivoting at (650,243), a 235-unit spoon at 25 degrees
-                   reaches up to y=134. An earlier viewBox started at y=195
+                   pivoting at (600,180), a 235-unit spoon at 25 degrees
+                   reaches up to y=71. An earlier viewBox started at y=195
                    and sheared the whole raised spoon off, so it appeared out
-                   of nowhere mid-swing. The viewBox now starts at y=115,
-                   leaving ~19 units of clearance above it. -->
-              <g transform="translate(650, 243)">
+                   of nowhere mid-swing. The viewBox now starts at y=50,
+                   leaving ~21 units of clearance above it. -->
+              <g transform="translate(600, 180)" filter="url(#drop-shadow)">
                 <g class="stir">
                   <rect x="-180" y="-8" width="180" height="16" rx="8" fill="#d39e6a" />
                   <ellipse cx="-200" cy="0" rx="35" ry="22" fill="#c48b56" />
