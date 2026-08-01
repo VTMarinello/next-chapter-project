@@ -15,10 +15,32 @@
     </header>
 
     <main>
+      <!-- Region 1: paste a recipe in as plain text. script.js parses it and
+           fills in the editor rows below (region 2). The textarea is the
+           real way in - pasting with Ctrl/Cmd+V always works here. The
+           "Paste from clipboard" button is only a shortcut for that same
+           textarea; see handlePasteButton() in script.js. -->
+      <section id="paste-area">
+        <h2>Add a Recipe</h2>
+        <textarea
+          id="paste-textarea"
+          rows="8"
+          placeholder="Paste your recipe here…"
+        ></textarea>
+        <div class="paste-buttons">
+          <button type="button" id="paste-button">Paste from clipboard</button>
+          <button type="button" id="read-recipe-button">Read recipe</button>
+        </div>
+      </section>
+
       <!-- Region 2: the editor. The single surface a user types a recipe into.
            Pre-filled by script.js with exampleRecipe on page load. -->
       <section id="editor">
         <h2>Your Recipe</h2>
+
+        <!-- Filled in by script.js after a paste is read, e.g. "Read 9 of
+             10 lines. Check the marked one." Empty until then. -->
+        <p id="review-notice"></p>
 
         <div class="editor-field">
           <label for="recipe-name">Recipe name</label>

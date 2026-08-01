@@ -243,3 +243,9 @@ so You build all the internal logic, but you have yet to add any of the HTML for
 ### 2026-07-31 18:42:36
 
 yeah go for it.
+
+---
+
+### 2026-07-31 19:00:47
+
+go fo the whole thing i need to see it on the page to critique it and know what else to change here. you can quiz  me after when i ask you to.

@@ -62,3 +62,39 @@ h1 {
 .ingredient-row .name-input {
   flex-grow: 1;
 }
+
+/* Chunk 7: paste area (region 1) and the parser's marks in the editor.
+   Just enough to be usable - the real styling pass is chunk 9. */
+#paste-area {
+  border: 1px solid #a4432b;
+  border-radius: 4px;
+  padding: 0.75rem 1.25rem;
+  margin-bottom: 1.5rem;
+  background-color: #ffffff;
+}
+
+#paste-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+}
+
+.paste-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+#review-notice {
+  font-style: italic;
+}
+
+/* A row the parser couldn't make sense of - the original text is still in
+   the name field, just flagged for a human to look at. */
+.unparsed-row {
+  background-color: #fdf0d5;
+}
+
+.unparsed-mark {
+  margin-left: 0.25rem;
+}

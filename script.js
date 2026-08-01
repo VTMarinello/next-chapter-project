@@ -31,7 +31,14 @@ function formatIngredientText(ingredient) {
   const textParts = [];
 
   if (ingredient.amount !== null) {
-    textParts.push(formatAmount(ingredient.amount));
+    // Chunk 7: a range ("2-3 cloves") carries a second number, amountMax.
+    // Everything without a range leaves amountMax null/undefined and takes
+    // the plain single-amount path, unchanged from chunk 4.
+    if (ingredient.amountMax !== null && ingredient.amountMax !== undefined) {
+      textParts.push(formatAmount(ingredient.amount) + "-" + formatAmount(ingredient.amountMax));
+    } else {
+      textParts.push(formatAmount(ingredient.amount));
+    }
   }
 
   if (ingredient.unit !== "") {
@@ -114,6 +121,21 @@ function scaleIngredient(ingredient, multiplier) {
   if (ingredient.amount === null) {
     return {
       amount: ingredient.amount,
+      amountMax: ingredient.amountMax,
+      unit: ingredient.unit,
+      name: ingredient.name,
+    };
+  }
+
+  // Chunk 7: a range ("2-3 cloves garlic") has a second number, amountMax,
+  // that needs scaling too. Ingredients without a range simply don't have
+  // this field, so the check below only takes the range path when there
+  // really is one.
+  if (ingredient.amountMax !== null && ingredient.amountMax !== undefined) {
+    const scaledRange = scaleRange(ingredient, multiplier);
+    return {
+      amount: scaledRange.amount,
+      amountMax: scaledRange.amountMax,
       unit: ingredient.unit,
       name: ingredient.name,
     };
@@ -121,8 +143,20 @@ function scaleIngredient(ingredient, multiplier) {
 
   return {
     amount: scaleAmount(ingredient.amount, multiplier),
+    amountMax: ingredient.amountMax,
     unit: ingredient.unit,
     name: ingredient.name,
+  };
+}
+
+// Scales both ends of a range using the same scaleAmount function as a
+// plain amount. PLAN.md's insight: a range isn't a special kind of number,
+// it's two ordinary numbers with a dash between them, so each one gets
+// multiplied the same way and the dash is put back afterward.
+function scaleRange(range, multiplier) {
+  return {
+    amount: scaleAmount(range.amount, multiplier),
+    amountMax: scaleAmount(range.amountMax, multiplier),
   };
 }
 
@@ -281,15 +315,20 @@ function renderEditorRow(ingredient, index) {
   const row = document.createElement("div");
   row.className = "ingredient-row";
 
+  // Chunk 7: a parsed line that couldn't be understood still gets a row
+  // (rule 3 — flag it, never drop it), so this remembers that fact on the
+  // row itself. It's read back out in readEditorRow, which is what lets the
+  // mark survive a redraw after adding or deleting a row.
+  row.dataset.unparsed = ingredient.unparsed ? "true" : "false";
+
   const amountInput = document.createElement("input");
-  amountInput.type = "number";
+  // Chunk 6 used type="number" here. Chunk 7 needs this box to also hold a
+  // range like "2-3", which a number input can't display, so it's plain
+  // text now and readEditorRow (below) is what makes sense of what's typed
+  // into it.
+  amountInput.type = "text";
   amountInput.className = "amount-input";
-  // A blank amount is a real, meaningful value here ("Salt and pepper to
-  // taste" has none), so amount === null shows as an empty box rather than
-  // the input defaulting to "0".
-  if (ingredient.amount !== null) {
-    amountInput.value = ingredient.amount;
-  }
+  amountInput.value = amountFieldText(ingredient);
   amountInput.addEventListener("input", handleEditorFieldChange);
   row.appendChild(amountInput);
 
@@ -315,7 +354,35 @@ function renderEditorRow(ingredient, index) {
   });
   row.appendChild(deleteButton);
 
+  // Chunk 7: a quiet visual flag on rows the parser couldn't make sense
+  // of, so there's something to notice besides the review notice text at
+  // the top of the editor. Real styling is chunk 9 — this is just enough
+  // to be seen.
+  if (ingredient.unparsed) {
+    row.classList.add("unparsed-row");
+    const warningMark = document.createElement("span");
+    warningMark.className = "unparsed-mark";
+    warningMark.textContent = "⚠";
+    warningMark.title = "Couldn't read this line automatically — check it";
+    row.appendChild(warningMark);
+  }
+
   return row;
+}
+
+// Turns an ingredient's amount into the raw text the (editable) amount box
+// shows. Deliberately plain numbers, not formatAmount's pretty fractions —
+// this box is for typing into, and "1.5" is easier to edit than "1½".
+// A range shows as "2-3", matching what readAmountFieldText below expects
+// to read back.
+function amountFieldText(ingredient) {
+  if (ingredient.amount === null) {
+    return "";
+  }
+  if (ingredient.amountMax !== null && ingredient.amountMax !== undefined) {
+    return ingredient.amount + "-" + ingredient.amountMax;
+  }
+  return String(ingredient.amount);
 }
 
 // Reads every editor field back into a recipe object. This is the function
@@ -335,22 +402,52 @@ function readEditorIntoRecipe() {
   return { name: name, servings: servings, ingredients: ingredients };
 }
 
-// Reads one row's three inputs into an ingredient object. Split out of
+// Reads one row's inputs into an ingredient object. Split out of
 // readEditorIntoRecipe so that function stays a short loop.
 function readEditorRow(row) {
   const amountInput = row.querySelector(".amount-input");
   const unitInput = row.querySelector(".unit-input");
   const nameInput = row.querySelector(".name-input");
 
+  const parsedAmount = readAmountFieldText(amountInput.value);
+
+  // The unparsed flag was stashed on the row itself when it was drawn (see
+  // renderEditorRow), so it survives here even though this function never
+  // sees the original ingredient object.
+  const unparsed = row.dataset.unparsed === "true";
+
+  return {
+    amount: parsedAmount.amount,
+    amountMax: parsedAmount.amountMax,
+    unit: unitInput.value,
+    name: nameInput.value,
+    unparsed: unparsed,
+  };
+}
+
+// Turns the raw text typed into the amount box back into numbers. Handles
+// a plain amount ("2"), a range ("2-3"), and a blank box (no amount) —
+// the same three shapes amountFieldText can produce, so a row round-trips
+// through an edit without losing its range.
+function readAmountFieldText(text) {
+  const trimmedText = text.trim();
+
   // Number("") evaluates to 0, which would silently turn a blank amount box
   // into a zero amount. Checking for an empty string first keeps a blank
   // box meaning "no amount", matching exampleRecipe's use of null.
-  let amount = null;
-  if (amountInput.value.trim() !== "") {
-    amount = Number(amountInput.value);
+  if (trimmedText === "") {
+    return { amount: null, amountMax: null };
   }
 
-  return { amount: amount, unit: unitInput.value, name: nameInput.value };
+  // Reuses the same range check and range reader the paste parser uses
+  // (see isRange/readLeadingRange below), so "what counts as a range" is
+  // defined in exactly one place.
+  if (isRange(trimmedText)) {
+    const range = readLeadingRange(trimmedText);
+    return { amount: range.amount, amountMax: range.amountMax };
+  }
+
+  return { amount: Number(trimmedText), amountMax: null };
 }
 
 // Appends one blank ingredient row and redraws the editor.
@@ -358,7 +455,7 @@ function addEmptyRow() {
   // Read the current fields first, so appending a blank row doesn't throw
   // away edits already made to the other rows.
   const recipe = readEditorIntoRecipe();
-  recipe.ingredients.push({ amount: null, unit: "", name: "" });
+  recipe.ingredients.push({ amount: null, amountMax: null, unit: "", name: "", unparsed: false });
   renderEditor(recipe);
   handleEditorFieldChange();
 }
@@ -388,6 +485,328 @@ function handleEditorFieldChange() {
   renderRecipe(recipe, servingsWanted);
 }
 
+// Chunk 7: paste-and-parse (region 1).
+//
+// Turns a blob of pasted recipe text into ingredient rows the editor can
+// show. The parser's only job is to build a recipe object and hand it to
+// renderEditor — exactly the same object shape a hand-typed recipe already
+// produces. Nothing here talks to scaling directly; a pasted recipe and a
+// typed one are indistinguishable once they land in the editor.
+
+// The units the parser recognises. Checked case-insensitively and with a
+// trailing period tolerated ("tbsp." matches "tbsp"), see looksLikeUnit.
+const knownUnits = [
+  "cup", "cups",
+  "tbsp", "tablespoon", "tablespoons",
+  "tsp", "teaspoon", "teaspoons",
+  "oz", "ounce", "ounces",
+  "lb", "lbs", "pound", "pounds",
+  "g", "gram", "grams", "kg",
+  "ml", "l", "litre", "liter",
+  "pinch", "dash",
+  "clove", "cloves",
+  "can", "cans",
+  "stick", "sticks",
+  "slice", "slices",
+];
+
+// Is this word one of the known units? "Tbsp." (capitalised, with a
+// trailing period) and "tbsp" both match the same list entry.
+function looksLikeUnit(word) {
+  const cleanedWord = word.toLowerCase().replace(/\.$/, ""); // drop one trailing "."
+  return knownUnits.includes(cleanedWord);
+}
+
+// Unicode fraction characters the parser understands, each mapped to its
+// decimal value.
+const fractionCharacterValues = {
+  "¼": 0.25,
+  "½": 0.5,
+  "¾": 0.75,
+  "⅓": 1 / 3,
+  "⅔": 2 / 3,
+  "⅛": 0.125,
+};
+
+// "½" -> 0.5. Returns undefined for any character that isn't one of the
+// fractions above.
+function fractionCharToNumber(char) {
+  return fractionCharacterValues[char];
+}
+
+// Finds the first fraction character inside a piece of amount text, or
+// null if there isn't one. Used by amountTextToNumber to tell "½" (a bare
+// fraction) apart from "1½" (a whole number stuck to a fraction).
+function findFractionChar(text) {
+  for (const character of text) {
+    if (fractionCharToNumber(character) !== undefined) {
+      return character;
+    }
+  }
+  return null;
+}
+
+// "1/2" -> 0.5. Splits on the slash and divides.
+function slashFractionToNumber(text) {
+  const parts = text.split("/");
+  const numerator = Number(parts[0]);
+  const denominator = Number(parts[1]);
+  return numerator / denominator;
+}
+
+// "1 1/2" -> 1.5. The whole number and the fraction are separated by a
+// space; each side is handled by the function that already knows how to
+// read it.
+function amountTextToNumberMixed(text) {
+  const parts = text.split(" ");
+  const whole = Number(parts[0]);
+  const fractionValue = slashFractionToNumber(parts[1]);
+  return whole + fractionValue;
+}
+
+// "1½" or "½" -> 1.5 / 0.5. Pulls the fraction character's value out, then
+// adds whatever whole number (if any) was written directly in front of it.
+function amountTextToNumberWithFractionChar(text, fractionChar) {
+  const fractionValue = fractionCharToNumber(fractionChar);
+  const wholeNumberText = text.replace(fractionChar, "");
+  if (wholeNumberText === "") {
+    return fractionValue;
+  }
+  return Number(wholeNumberText) + fractionValue;
+}
+
+// Normalises any of the amount text shapes the parser can hand it — "2",
+// "1.5", "1/2", "1 1/2", "½" — into a plain number.
+function amountTextToNumber(text) {
+  if (text.includes(" ")) {
+    return amountTextToNumberMixed(text);
+  }
+  if (text.includes("/")) {
+    return slashFractionToNumber(text);
+  }
+  const fractionChar = findFractionChar(text);
+  if (fractionChar !== null) {
+    return amountTextToNumberWithFractionChar(text, fractionChar);
+  }
+  return Number(text);
+}
+
+// Matches a range like "2-3" or "2 - 3" at the very start of a string: one
+// or more digits, optional space, a dash, optional space, one or more
+// digits.
+const rangePattern = /^(\d+)\s*-\s*(\d+)/;
+
+// Does the start of this text look like a range, e.g. "2-3 cloves"?
+function isRange(text) {
+  return rangePattern.test(text);
+}
+
+// Reads a leading range off the front of text. PLAN.md's insight: a range
+// isn't a special kind of number, it's two ordinary numbers with a dash
+// between them, so this just reads both plain numbers out with rangePattern
+// and hands them back separately as amount/amountMax.
+function readLeadingRange(text) {
+  const match = text.match(rangePattern);
+  const low = Number(match[1]);
+  const high = Number(match[2]);
+  const rest = text.slice(match[0].length).trim();
+  return { amount: low, amountMax: high, rest: rest };
+}
+
+// Matches a mixed number like "1 1/2": a whole number, some spaces, then a
+// simple slash fraction.
+const mixedNumberPattern = /^\d+\s+\d+\/\d+/;
+
+// Matches a plain slash fraction on its own, like "1/2".
+const slashFractionPattern = /^\d+\/\d+/;
+
+// Matches a unicode fraction character (¼ ½ ¾ ⅓ ⅔ ⅛), optionally with a
+// whole number written directly in front of it with no space, like "1½".
+const unicodeFractionPattern = /^\d*[¼½¾⅓⅔⅛]/;
+
+// Matches a plain whole or decimal number, like "2" or "2.5" or "250".
+const plainNumberPattern = /^\d+(\.\d+)?/;
+
+// Tries each amount shape in turn, most specific first, and returns
+// whichever one matches the very start of the text — or null if none do.
+// Order matters: mixedNumberPattern has to be checked before
+// plainNumberPattern, or "1 1/2" would only ever match as a bare "1".
+function matchAmountText(text) {
+  const patternsToTry = [mixedNumberPattern, slashFractionPattern, unicodeFractionPattern, plainNumberPattern];
+  for (const pattern of patternsToTry) {
+    const match = text.match(pattern);
+    if (match !== null) {
+      return match[0];
+    }
+  }
+  return null;
+}
+
+// Grabs the amount off the front of a line of text, in whatever shape it's
+// written. Returns null when there's no leading amount at all — that's not
+// a failure, it's rule 1: "Salt and pepper to taste" has nothing to grab.
+function readLeadingAmount(text) {
+  if (isRange(text)) {
+    return readLeadingRange(text);
+  }
+
+  const amountText = matchAmountText(text);
+  if (amountText === null) {
+    return null;
+  }
+
+  const amount = amountTextToNumber(amountText);
+  const rest = text.slice(amountText.length).trim();
+  return { amount: amount, amountMax: null, rest: rest };
+}
+
+// Turns one line of pasted recipe text into {amount, amountMax, unit, name,
+// unparsed}. This is where the three parsing rules from PLAN.md live:
+//
+// 1. No leading number -> leave the line alone (amount stays null).
+// 2. A range ("2-3 cloves") carries amount and amountMax instead of one
+//    plain amount — handled upstream by readLeadingAmount / isRange.
+// 3. Anything that can't be made sense of is still turned into a row, with
+//    the original text kept in the name field and unparsed set to true, so
+//    nothing is ever silently dropped.
+function parseLine(line) {
+  const trimmedLine = line.trim();
+  const leadingAmount = readLeadingAmount(trimmedLine);
+
+  // Rule 1: nothing to grab at the front means this line is correct as
+  // written, at any batch size.
+  if (leadingAmount === null) {
+    return { amount: null, amountMax: null, unit: "", name: trimmedLine, unparsed: false };
+  }
+
+  // A parenthetical immediately after the amount, like "1 (14 oz) can...",
+  // is a nested amount this parser doesn't attempt to untangle. Flagging it
+  // is more honest than guessing and getting it wrong.
+  if (leadingAmount.rest.startsWith("(")) {
+    return { amount: null, amountMax: null, unit: "", name: trimmedLine, unparsed: true };
+  }
+
+  const restWords = leadingAmount.rest.split(/\s+/); // split on any run of whitespace
+  const firstWord = restWords[0];
+
+  let unit = "";
+  let name = leadingAmount.rest;
+  if (looksLikeUnit(firstWord)) {
+    unit = firstWord;
+    name = restWords.slice(1).join(" ");
+  }
+
+  // An amount with nothing left to call the ingredient isn't a real parse —
+  // flag it instead of showing a blank name.
+  if (name.trim() === "") {
+    return { amount: null, amountMax: null, unit: "", name: trimmedLine, unparsed: true };
+  }
+
+  return {
+    amount: leadingAmount.amount,
+    amountMax: leadingAmount.amountMax,
+    unit: unit,
+    name: name.trim(),
+    unparsed: false,
+  };
+}
+
+// Splits a pasted blob of text into individual lines, dropping any blank
+// ones (a blank line between ingredients shouldn't become an empty row).
+function splitIntoLines(text) {
+  const rawLines = text.split("\n");
+  const lines = [];
+  for (const rawLine of rawLines) {
+    const trimmedLine = rawLine.trim();
+    if (trimmedLine !== "") {
+      lines.push(trimmedLine);
+    }
+  }
+  return lines;
+}
+
+// Counts how many of a recipe's ingredients the parser couldn't make sense
+// of, for the review notice.
+function countUnparsed(recipe) {
+  let unparsedCount = 0;
+  for (const ingredient of recipe.ingredients) {
+    if (ingredient.unparsed) {
+      unparsedCount = unparsedCount + 1;
+    }
+  }
+  return unparsedCount;
+}
+
+// Writes the plain-language review notice, e.g. "Read 9 of 10 lines. Check
+// the marked one." Informative, not blocking — the user can scale the
+// recipe regardless of what this says.
+function renderReviewNotice(total, unparsed) {
+  const noticeElement = document.getElementById("review-notice");
+  const readCount = total - unparsed;
+
+  let message = "Read " + readCount + " of " + total + " lines.";
+  if (unparsed === 1) {
+    message = message + " Check the marked one.";
+  } else if (unparsed > 1) {
+    message = message + " Check the marked ones.";
+  }
+
+  noticeElement.textContent = message;
+}
+
+// Parses a pasted blob of text and fills the editor with the result. Keeps
+// whatever name and servings are already in the editor — pasting only
+// replaces the ingredient list, since a recipe's title and serving count
+// don't usually appear as one of the ingredient lines.
+function loadPastedText(text) {
+  const currentRecipe = readEditorIntoRecipe();
+
+  const lines = splitIntoLines(text);
+  const ingredients = [];
+  for (const line of lines) {
+    ingredients.push(parseLine(line));
+  }
+
+  const recipe = { name: currentRecipe.name, servings: currentRecipe.servings, ingredients: ingredients };
+
+  renderEditor(recipe);
+  handleEditorFieldChange();
+  renderReviewNotice(lines.length, countUnparsed(recipe));
+}
+
+// The "Read recipe" button: takes whatever is in the paste textarea right
+// now and runs it through the parser.
+function handleReadRecipeButton() {
+  const pasteTextarea = document.getElementById("paste-textarea");
+  loadPastedText(pasteTextarea.value);
+}
+
+// The "Paste from clipboard" button. Reading the clipboard programmatically
+// needs the user's permission and a secure (https) connection, and can
+// silently fail — most notably when the page is opened straight from a
+// file on disk (file://) rather than served over https, which is exactly
+// how this file can be opened while working on it locally. The textarea is
+// always the real way in; when the clipboard read is refused or
+// unavailable, this just puts the cursor in the textarea so the user can
+// paste by hand (Ctrl/Cmd+V) instead.
+function handlePasteButton() {
+  const pasteTextarea = document.getElementById("paste-textarea");
+
+  if (!navigator.clipboard || !navigator.clipboard.readText) {
+    pasteTextarea.focus();
+    return;
+  }
+
+  navigator.clipboard
+    .readText()
+    .then(function (clipboardText) {
+      pasteTextarea.value = clipboardText;
+    })
+    .catch(function () {
+      pasteTextarea.focus();
+    });
+}
+
 // Pre-fills the editor with the starting recipe. From here on the editor's
 // own fields are what everything else reads from.
 renderEditor(exampleRecipe);
@@ -406,6 +825,12 @@ addIngredientButton.addEventListener("click", addEmptyRow);
 
 const servingsWantedInput = document.getElementById("servings-wanted");
 servingsWantedInput.addEventListener("input", handleEditorFieldChange);
+
+const pasteButton = document.getElementById("paste-button");
+pasteButton.addEventListener("click", handlePasteButton);
+
+const readRecipeButton = document.getElementById("read-recipe-button");
+readRecipeButton.addEventListener("click", handleReadRecipeButton);
 
 // Draws the output for the first time, using the pre-filled editor and
 // whatever the "cooking for" input starts at.
