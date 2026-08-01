@@ -889,3 +889,9 @@ the only screenshot in docs now shows how the read recupe button and scale itbut
 also what do you mean our code noted stops or gaps at item 10? we only had ten sections we did no? shouldnt it stop there? small changes we have made since, arent quite full arcs of the build. 
 
 but havent we also not put in the section it said we need about what we would add? feature wise with more time?
+
+---
+
+### 2026-07-31 23:23:00
+
+1   │ Countable ranges round to whole numbers — 3½-5¼ cloves is silly --- that currently occurs? it shouldnt. thata not worth leaving. I think the error notice if a save failsis worht putting in too. this section should be more simple to me not all stuff you made up. like having a print function to print saved recipesi think is a reasonable and useful feature, and coming up with maybe more robust logic about some edge cases makes sense. scale by what is on hand iant bad either if implementedin a intuitivw way. those three mentioned are more than enough.

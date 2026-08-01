@@ -40,9 +40,8 @@ function formatIngredientQuantity(ingredient) {
     // Chunk 5's unit-aware formatAmount can break a single amount into more
     // than one unit ("9 tbsp 1 tsp"), which would make a range unreadable
     // ("9 tbsp 1 tsp - 2 tbsp cups"). So a range is never decomposed: each
-    // end is just snapped to a plain fraction with formatFractionAmount,
-    // and the unit is written once, after the whole range.
-    textParts.push(formatFractionAmount(ingredient.amount) + "-" + formatFractionAmount(ingredient.amountMax));
+    // end is formatted on its own, and the unit is written once afterwards.
+    textParts.push(formatRange(ingredient.amount, ingredient.amountMax, ingredient.unit));
     if (ingredient.unit !== "") {
       textParts.push(ingredient.unit);
     }
@@ -57,6 +56,37 @@ function formatIngredientQuantity(ingredient) {
   }
 
   return textParts.join(" ");
+}
+
+// Formats both ends of a range.
+//
+// Things you COUNT are rounded to whole numbers. "2-3 cloves" scaled by 1.75
+// used to come out as "3½-5¼ cloves", which is arithmetically right and
+// useless — half a clove of garlic isn't a thing anyone measures, and a range
+// is already an approximation, so carrying fractions inside one adds false
+// precision to a number that was never precise.
+//
+// Volumes keep their fractions, because "½-¾ cup" is a real instruction.
+//
+// A single amount of a countable thing is left alone deliberately: "1⅓ eggs"
+// stays as it is, because there the number IS the answer and rounding it
+// would be the app deciding how much egg to waste. See PLAN.md's decisions
+// table. It's the range specifically that reads as noise.
+function formatRange(low, high, unit) {
+  if (classifyUnit(unit) !== "count") {
+    return formatFractionAmount(low) + "-" + formatFractionAmount(high);
+  }
+
+  const roundedLow = Math.round(low);
+  const roundedHigh = Math.round(high);
+
+  // Once rounded, both ends can land on the same number — "2-2 cloves". At
+  // that point it isn't a range any more, so it's written as one number.
+  if (roundedLow === roundedHigh) {
+    return String(roundedLow);
+  }
+
+  return roundedLow + "-" + roundedHigh;
 }
 
 // The whole line as one string — quantity then name. Kept because it's the
@@ -889,7 +919,10 @@ function handleEditorFieldChange() {
   // Keep the scene showing the state the next "Scale it" will begin from,
   // so pressing it never has to build that state in its own first frame.
   presetScene(currentMultiplier());
-  saveRecipes();
+
+  if (!saveRecipes()) {
+    showStorageWarning();
+  }
 }
 
 // Chunk 7: paste-and-parse (region 1).
@@ -1275,12 +1308,32 @@ function saveRecipes() {
 
   try {
     localStorage.setItem(RECIPE_STORAGE_KEY, recipeText);
+    return true;
   } catch (error) {
-    // setItem can throw - some private/incognito browsing modes disable
-    // storage entirely, and storage has a size limit it could hit. Either
-    // way, a failed save should never break normal use of the app, so the
-    // error is swallowed here instead of shown to the user.
+    // setItem can throw — some private browsing modes disable storage
+    // entirely, and storage has a size limit it could hit.
+    //
+    // A failed save must never interrupt typing, so nothing is thrown from
+    // here. But it used to be swallowed completely, which was worse than the
+    // problem it avoided: everything looked like it was working, and the
+    // whole recipe disappeared on the next refresh with no warning that it
+    // was never being kept. The caller shows a standing notice instead.
+    return false;
   }
+}
+
+// Shown once, and left up, when the browser refuses to store anything. Not a
+// popup and not dismissible — the condition doesn't go away, so neither
+// should the warning.
+function showStorageWarning() {
+  const warning = document.getElementById("storage-warning");
+
+  if (warning === null || warning.textContent !== "") {
+    return;
+  }
+
+  warning.textContent =
+    "This browser isn't letting the app save. You can still scale recipes, but nothing will be kept when you close the tab.";
 }
 
 // Reads the saved recipe back out of localStorage. Returns null if there

@@ -92,6 +92,11 @@
         </div>
 
         <div class="card-body">
+          <!-- Only filled in if the browser refuses to store anything, so
+               a recipe that will silently vanish on refresh says so while
+               it's still on screen. Empty the rest of the time. -->
+          <p id="storage-warning" class="storage-warning"></p>
+
           <!-- Filled in by script.js after a paste is read, e.g. "Read 9 of
                10 lines. Check the marked one." Empty until then. -->
           <p id="review-notice"></p>

@@ -681,6 +681,22 @@ button:focus-visible {
   display: none;
 }
 
+/* Storage is refused. Stated plainly and left up, because the
+   condition doesn't resolve on its own. */
+.storage-warning {
+  margin: 0 0 var(--s4);
+  padding: var(--s3);
+  background: #fdeee9;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 var(--r) var(--r) 0;
+  font-size: 0.87rem;
+  color: #8a3a22;
+}
+
+.storage-warning:empty {
+  display: none;
+}
+
 .field-message {
   display: block;
   margin: var(--s1) 0 0;

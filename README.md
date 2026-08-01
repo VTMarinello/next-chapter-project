@@ -100,7 +100,9 @@ when the fraction would be meaningfully wrong**, with the line drawn at half a t
   (`438 g`)
 - **Lines with no amount pass through untouched** — "Salt and pepper to taste" is correct at any
   batch size, and is marked `(not scaled)` so it doesn't look like a bug
-- **Ranges scale end to end** — `2-3 cloves` doubled becomes `4-6 cloves`
+- **Ranges scale end to end** — `2-3 cloves` doubled becomes `4-6 cloves`. Ranges of things you
+  *count* round to whole numbers, so scaling by 1.75 gives `4-5 cloves` rather than `3½-5¼`;
+  volumes keep their fractions, because `½-¾ cup` is a real instruction
 - **Save recipes by name** to a separate [saved recipes page](saved.html), reachable from the
   header. Saved recipes store their *original* amounts plus the servings you last used, so
   reopening and re-scaling can't compound on an earlier scaling
@@ -108,6 +110,9 @@ when the fraction would be meaningfully wrong**, with the line drawn at half a t
 - **Invalid input doesn't break anything** — a blank or negative servings box shows the recipe
   unscaled with a plain-language message instead of dividing by zero. The servings boxes accept
   digits only
+- **It says so when it can't save.** If the browser refuses to store anything, a standing notice
+  says the recipe won't survive closing the tab, rather than appearing to work and silently
+  losing it
 - **Readable on a phone**, since that's where a recipe gets read
 - A small **SVG animation** plays when you press "Scale it" — one apple on a table becomes a
   tableful, or clears back down if you're scaling down. It's decoration rather than a feature, but
@@ -117,23 +122,22 @@ when the fraction would be meaningfully wrong**, with the line drawn at half a t
 
 ### Next
 
-Honest about what's missing, roughly in the order I'd do it:
+Three things I'd build with more time:
 
-1. **Countable ranges should round to whole numbers.** `3½-5¼ cloves garlic` is arithmetically
-   right and practically silly. Volumes can take fractions; things you count shouldn't.
-2. **Fix amounts that vanish to zero.** Scaling down hard enough gives `0 cup flour`. It should say
-   "a pinch", or refuse to go below a measurable amount, rather than showing zero of a real
-   ingredient.
-3. **Handle quantities written mid-sentence.** `Juice of 1 lemon` is treated as unscalable because
-   the parser only looks for a number at the *start* of a line.
-4. **Tell the user when a save fails.** If browser storage is disabled, the app appears to work and
-   then loses everything on refresh, with no warning.
-5. **Confirm before "Start over."** It's one irreversible click. Deleting a saved recipe already
-   asks; this doesn't.
-6. **Scale by what you have on hand** — *"I've only got 2 eggs, what does everything else become?"*
-   The same ratio, run backwards from one ingredient instead of from the serving count.
-7. **A print-friendly view** for the scaled recipe.
-8. **Fix pluralisation edge cases** — `0 cup` should be `0 cups`.
+1. **Print a saved recipe.** A clean print layout — scaled amounts, large type, no interface — so a
+   recipe can go on the counter or in a folder without a screen. The saved recipes page is the
+   natural place for it, since that's where finished recipes already live.
+
+2. **Handle the awkward input cases better.** The parser is deliberately built to flag what it
+   can't read rather than guess, and there are known gaps worth closing: quantities written
+   mid-sentence (`Juice of 1 lemon`), nested amounts (`1 (14 oz) can`), and amounts that shrink to
+   `0 cup` when a recipe is scaled down hard — that should say "a pinch" or refuse to go below a
+   measurable amount, rather than showing zero of a real ingredient.
+
+3. **Scale by what you have on hand.** *"I've only got 2 eggs — what does everything else become?"*
+   It's the same ratio the app already uses, run backwards from one ingredient instead of from the
+   serving count. The work is in making it feel obvious rather than in the maths: probably a small
+   control on the ingredient row itself, so you say "lock this one" and everything else follows.
 
 Deliberately **not** built, so the scope stayed honest:
 
