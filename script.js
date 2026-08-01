@@ -770,16 +770,26 @@ function deleteRow(index) {
   handleEditorFieldChange();
 }
 
-// Runs on every keystroke in any editor field (name, servings, or any
-// ingredient input) and on every change to the "cooking for" box. Reads the
-// editor, scales it, and redraws only the output in region 3 - the editor
-// itself is left alone so focus never jumps out of the field being typed
-// in.
-function handleEditorFieldChange() {
+// Reads the editor, scales it, and redraws only the output in region 3 -
+// the editor itself is left alone so focus never jumps out of the field
+// being typed in. Split out from handleEditorFieldChange (below) so the
+// "Start over" button can redraw the output without also triggering a save
+// right after it has just cleared the save.
+function updateScaledOutput() {
   const servingsWantedInput = document.getElementById("servings-wanted");
   const servingsWanted = Number(servingsWantedInput.value);
   const recipe = readEditorIntoRecipe();
   renderRecipe(recipe, servingsWanted);
+}
+
+// Runs on every keystroke in any editor field (name, servings, or any
+// ingredient input) and on every change to the "cooking for" box. Updates
+// the scaled output, then saves the current recipe to localStorage (chunk
+// 8) so every edit survives a page refresh without the user doing anything
+// extra.
+function handleEditorFieldChange() {
+  updateScaledOutput();
+  saveRecipes();
 }
 
 // Chunk 7: paste-and-parse (region 1).
@@ -1104,9 +1114,96 @@ function handlePasteButton() {
     });
 }
 
-// Pre-fills the editor with the starting recipe. From here on the editor's
-// own fields are what everything else reads from.
-renderEditor(exampleRecipe);
+// Chunk 8: saving recipes in the browser.
+//
+// localStorage is a key/value store built into the browser. It persists
+// between page loads on the same device and browser, but never leaves the
+// browser and isn't a database or a network service - it satisfies the
+// project's "no databases, no APIs" rule. It can only store strings, so a
+// recipe object has to be turned into a string with JSON.stringify before
+// it's saved, and turned back into an object with JSON.parse when it's
+// read out again.
+
+// A specific, namespaced key, rather than something generic like "recipe" -
+// other pages served from the same origin (a github.io site, for example)
+// share the same localStorage, so a vague key risks colliding with
+// something else that uses the same name.
+const RECIPE_STORAGE_KEY = "recipe-scaler-recipe";
+
+// Reads whatever is currently in the editor and writes it to localStorage.
+// Called from handleEditorFieldChange, so it runs after every keystroke,
+// every added or deleted row, and every paste-and-parse - any change to the
+// recipe gets saved.
+function saveRecipes() {
+  const recipe = readEditorIntoRecipe();
+  const recipeText = JSON.stringify(recipe);
+
+  try {
+    localStorage.setItem(RECIPE_STORAGE_KEY, recipeText);
+  } catch (error) {
+    // setItem can throw - some private/incognito browsing modes disable
+    // storage entirely, and storage has a size limit it could hit. Either
+    // way, a failed save should never break normal use of the app, so the
+    // error is swallowed here instead of shown to the user.
+  }
+}
+
+// Reads the saved recipe back out of localStorage. Returns null if there
+// isn't one - either nothing has been saved yet, or the saved value
+// couldn't be used.
+function loadRecipes() {
+  const recipeText = localStorage.getItem(RECIPE_STORAGE_KEY);
+
+  if (recipeText === null) {
+    // Nothing has been saved in this browser yet. Not an error.
+    return null;
+  }
+
+  try {
+    return JSON.parse(recipeText);
+  } catch (error) {
+    // JSON.parse throws on text that isn't valid JSON. That could happen if
+    // someone hand-edits localStorage in devtools, or a saved value was
+    // written by a different version of this app. Without this try/catch, a
+    // bad saved value would throw right here while the page is loading, and
+    // the whole page would fail - a blank screen with only an error in the
+    // console. Falling back to null (and from there to exampleRecipe) keeps
+    // the app usable instead.
+    return null;
+  }
+}
+
+// Removes the saved recipe from localStorage, so the next page load falls
+// back to exampleRecipe instead of whatever was saved.
+function clearSavedRecipe() {
+  try {
+    localStorage.removeItem(RECIPE_STORAGE_KEY);
+  } catch (error) {
+    // Same reasoning as saveRecipes - storage access can fail, and that
+    // shouldn't stop the reset button from at least putting the example
+    // recipe back on screen.
+  }
+}
+
+// The "Start over" button: throws away the saved recipe and puts the
+// example recipe back in the editor. Exists so a user who has saved a
+// broken or messy recipe has a way back to a known-good starting point -
+// without this, a bad save would be stuck in that browser forever.
+function handleResetButton() {
+  clearSavedRecipe();
+  renderEditor(exampleRecipe);
+  updateScaledOutput();
+}
+
+// Pre-fills the editor with a saved recipe if this browser already has one,
+// and falls back to the starting example recipe if not. From here on the
+// editor's own fields are what everything else reads from.
+const savedRecipe = loadRecipes();
+if (savedRecipe === null) {
+  renderEditor(exampleRecipe);
+} else {
+  renderEditor(savedRecipe);
+}
 
 // The name and "makes N servings" fields are fixed in index.html - renderEditor
 // only ever sets their .value, it never recreates them - so their listeners
@@ -1128,6 +1225,9 @@ pasteButton.addEventListener("click", handlePasteButton);
 
 const readRecipeButton = document.getElementById("read-recipe-button");
 readRecipeButton.addEventListener("click", handleReadRecipeButton);
+
+const resetButton = document.getElementById("reset-button");
+resetButton.addEventListener("click", handleResetButton);
 
 // Draws the output for the first time, using the pre-filled editor and
 // whatever the "cooking for" input starts at.
