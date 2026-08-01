@@ -7,6 +7,16 @@ PROJECT-GUIDE.md
 # macOS
 .DS_Store
 
-# Screenshots — may capture dock, tabs, or other personal context
+# Screenshots — may capture the dock, browser tabs, or other personal
+# context, and aren't part of the deliverable either way.
 Screenshot*.png
+screenshot*.png
 *.screenshot.png
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+
+# Scratch HTML used while working out the animation. The finished version
+# lives in index.html; these were reference sketches and some pulled in a
+# CDN library the project doesn't use.
+docs/*.html

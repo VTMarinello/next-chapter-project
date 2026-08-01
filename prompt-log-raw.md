@@ -867,3 +867,15 @@ can you run a quick battery of tests and see what edge cases arent handled well?
 you should also only be able to click the numbers or type in numbers in the cooking for x peope box. currently you can tyoe letters andnon integers
 
 as for the layout i think th page is cluttered enough, i would reccmond them saving to the saved recipes page. currently overloading the page with more recipes... i mean where would thye go aver morethan a few? unless its below all of it and generate in a scroll down for saved recipes type thing. wirther could work. it cant just be more squares though without distinct seperation in some way
+
+---
+
+### 2026-07-31 23:04:31
+
+ on part 11 of the admissions project briefing, it mentions all of the required sections to complete the project. Including the GitHub repository, the read me with required sections, the prompt history, etc. Do we have everything we need especially the parts in the read me that are required.
+
+---
+
+### 2026-07-31 23:10:12
+
+ Well, we built the same recipes part so we can't add it if we need a section for what I build next. I'd have to come up with some other feature that we have yet to add right obviously, any changes they don't represent the project as it is such as if there's five files in our lock now we just need to change it to reflect the current bill. I think the SVG animation is worth mentioning, but not as a big highlighted point, it was something that was fun to do, but it's not necessarily a main feature of the app. Or just an exercise and having to prompt you a lot to position SVG assets I got off the Internet. Will handle the quiz after this to test nine hours and stuff I want to get to read me I have to submit soon as long as you can verify one last time we were allowed to use any of the few libraries that we did, and that it wasn't something we were supposed to do then yes we can change that line to represent the new thing. If we have GSA stuff in here, we don't need you can just get rid of it obviously as long as we're not using it also just make sure to ignore covers the files it's supposed to, the screenshots that we took and put into the doc folder and you can get rid of the demo page as I don't think we're using it, if the asset exist in there, make sure you pull it out but as being an actual HTML page with its own text about wire versus clean and stuff, we obviously don't need that anymore

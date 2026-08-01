@@ -48,6 +48,9 @@ order the features appear on screen:
 | 9 | Styling and layout | Done late, so it styles everything |
 | 10 | Empty and invalid input | Hardening, once there was something to harden |
 
+After those ten, the interface was rebuilt around a two-column layout, and a saved-recipes page was
+added on top.
+
 Two ordering decisions worth calling out:
 
 - **The editor (6) was built before the parser (7)** deliberately. The parser's output lands in the
@@ -91,30 +94,46 @@ when the fraction would be meaningfully wrong**, with the line drawn at half a t
 - **Every row is editable** before scaling — add, edit, or delete ingredients
 - **Manual entry** for anyone who'd rather type than paste
 - **Scaling by serving count**, not by a multiplier — "cooking for 6" is how people actually think
+- **Scaling works in both directions.** A recipe that makes 8 scaled for 4 halves everything; the
+  maths is one ratio, so shrinking was never a separate feature
 - **Measurable output**: fractions (`2¼ cups`), mixed units (`9 tbsp 1 tsp`), rounded metric
   (`438 g`)
 - **Lines with no amount pass through untouched** — "Salt and pepper to taste" is correct at any
   batch size, and is marked `(not scaled)` so it doesn't look like a bug
 - **Ranges scale end to end** — `2-3 cloves` doubled becomes `4-6 cloves`
-- **Recipes save in the browser** and survive a refresh, with a "Start over" reset
+- **Save recipes by name** to a separate [saved recipes page](saved.html), reachable from the
+  header. Saved recipes store their *original* amounts plus the servings you last used, so
+  reopening and re-scaling can't compound on an earlier scaling
+- **The working recipe autosaves** in the browser and survives a refresh, with a "Start over" reset
 - **Invalid input doesn't break anything** — a blank or negative servings box shows the recipe
-  unscaled with a plain-language message instead of dividing by zero
+  unscaled with a plain-language message instead of dividing by zero. The servings boxes accept
+  digits only
 - **Readable on a phone**, since that's where a recipe gets read
+- A small **SVG animation** plays when you press "Scale it" — one apple on a table becomes a
+  tableful, or clears back down if you're scaling down. It's decoration rather than a feature, but
+  it's built the same way as everything else: hand-written CSS keyframes and transitions, no
+  animation library. Getting the reversal to look right turned out to be the interesting part —
+  see below.
 
 ### Next
 
 Honest about what's missing, roughly in the order I'd do it:
 
 1. **Countable ranges should round to whole numbers.** `3½-5¼ cloves garlic` is arithmetically
-   right and practically silly.
-2. **Tell the user when a save fails.** If browser storage is disabled, the app appears to work and
+   right and practically silly. Volumes can take fractions; things you count shouldn't.
+2. **Fix amounts that vanish to zero.** Scaling down hard enough gives `0 cup flour`. It should say
+   "a pinch", or refuse to go below a measurable amount, rather than showing zero of a real
+   ingredient.
+3. **Handle quantities written mid-sentence.** `Juice of 1 lemon` is treated as unscalable because
+   the parser only looks for a number at the *start* of a line.
+4. **Tell the user when a save fails.** If browser storage is disabled, the app appears to work and
    then loses everything on refresh, with no warning.
-3. **Confirm before "Start over."** It's one irreversible click, styled identically to the harmless
-   buttons beside it.
-4. **Handle quantities written mid-sentence.** `Juice of 1 lemon` is currently treated as unscalable
-   because the parser only looks for a number at the *start* of a line.
-5. **A list of saved recipes** to switch between, rather than one saved slot.
-6. **A print-friendly view** for the scaled recipe.
+5. **Confirm before "Start over."** It's one irreversible click. Deleting a saved recipe already
+   asks; this doesn't.
+6. **Scale by what you have on hand** — *"I've only got 2 eggs, what does everything else become?"*
+   The same ratio, run backwards from one ingredient instead of from the serving count.
+7. **A print-friendly view** for the scaled recipe.
+8. **Fix pluralisation edge cases** — `0 cup` should be `0 cups`.
 
 Deliberately **not** built, so the scope stayed honest:
 
@@ -126,16 +145,26 @@ Deliberately **not** built, so the scope stayed honest:
 
 ## Technologies Used
 
-- **HTML** — one page, `index.html`
-- **CSS** — one stylesheet, with custom properties for the palette
-- **JavaScript** — plain, no frameworks, no build step, no dependencies
+- **HTML** — two pages: `index.html` (the scaler) and `saved.html` (saved recipes)
+- **CSS** — one stylesheet shared by both pages, with custom properties for the palette
+- **JavaScript** — `script.js` (all the logic, shared by both pages) and `saved.js` (drawing the
+  saved page)
 - **`localStorage`** — the browser's built-in key/value store, for saving recipes between visits
+- **SVG + CSS keyframes** — the scale animation
 - **GitHub Pages** — hosting
 
-No frameworks, no libraries, no build tooling. Everything runs directly from the three files in
-this repo. That was a deliberate choice: GitHub Pages serves static files directly so a build step
-would be a problem the project doesn't otherwise have, and every line has to be explainable out
-loud, which is harder when a framework is doing work invisibly.
+Five files, no dependencies. The course lists React and APIs under things the project "does not
+need", so libraries were allowed — I skipped them anyway for two reasons: GitHub Pages serves
+static files directly, so a build step would be a problem the project doesn't otherwise have; and
+every line has to be explainable out loud, which is harder when a library is doing work invisibly.
+
+That constraint had teeth. The animation was first sketched using GSAP, a timeline library loaded
+from a CDN. Rebuilding it as plain CSS keyframes and transitions took longer, but "a class toggle
+starts four keyframe animations, and each element's delay is its index times 55ms" is something I
+can actually explain. It also turned out to be the better design: a CSS *transition* animates
+whatever changed in whichever direction it changed, which is what let the animation run backwards —
+something the original timeline version couldn't do without conjuring the apples out of nowhere in
+its first frame.
 
 ## AI Tools Used
 
@@ -151,8 +180,7 @@ The setup used to stay in control of that:
   know what the builder intended, only what the code actually does, which is how several problems
   surfaced.
 - **[`docs/code-notes.md`](docs/code-notes.md)** — the resulting plain-English explanation of every
-  chunk, roughly 1,000 lines, including an honest "worth knowing" section per chunk listing what's
-  fragile or debatable
+  chunk, including an honest "worth knowing" section per chunk listing what's fragile or debatable
 - **A commit per chunk**, so the history shows the project evolving rather than appearing at once
 - **Quizzes** on the finished code to find the parts I couldn't explain
 
@@ -195,6 +223,6 @@ Salt and pepper to taste
 1 (14 oz) can diced tomatoes
 ```
 
-Nine of those parse cleanly. The tomatoes line gets flagged for you to fix — the nested `(14 oz)`
-is a case the parser deliberately refuses to guess at. Then change "Cooking for" to 7 and watch
-every amount rework itself into something you could actually measure.
+Seven of those eight parse cleanly. The tomatoes line gets flagged for you to fix — the nested
+`(14 oz)` is a case the parser deliberately refuses to guess at. Then change "Cooking for" to 7 and
+press **Scale it**, and watch every amount rework itself into something you could actually measure.
