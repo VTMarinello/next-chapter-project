@@ -231,3 +231,15 @@ that wasnt very obvious to me because the page currently just displays it as tex
 ### 2026-07-31 17:32:01
 
 i see the example recipe constant in script.js now. I mean i assume eventually we wil get rid of that. anyway proceed to step 3, possibly 4 as well.
+
+---
+
+### 2026-07-31 18:02:05
+
+so You build all the internal logic, but you have yet to add any of the HTML forms so that they're actually connected to the job description exist on the page any of our notifications or whatever they were in the AI diagram, and I don't know what steps 67 and eight are because it's a lot of other step according to what you've done it seems like you've done at least half of it especially if you're trying to say the logic is done. Did you do the REGEX pattern? Did you do the REGEX pattern?
+
+---
+
+### 2026-07-31 18:42:36
+
+yeah go for it.

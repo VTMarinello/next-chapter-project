@@ -2,6 +2,12 @@
 //
 // The recipe lives in JavaScript, not typed into index.html, so that later
 // chunks (scaling, saving, editing) can work with it as data instead of text.
+//
+// As of chunk 6, this object is only ever used once: to pre-fill the editor
+// when the page first loads (see renderEditor(exampleRecipe) at the bottom
+// of this file). From that point on, the editor's own fields are the source
+// of truth - readEditorIntoRecipe() is what scaling and the output actually
+// read from, not this object.
 
 // One ingredient is {amount, unit, name}.
 // - amount is a number, or null when there isn't one ("Salt and pepper to taste")
@@ -238,16 +244,169 @@ function renderMultiplier(multiplier) {
   multiplierDisplay.textContent = "×" + roundToTwoDecimals(multiplier);
 }
 
-// Reads the servings input and re-renders the recipe scaled to that
-// number. Runs once on page load, and again every time the input changes.
-function handleServingsInputChange() {
-  const servingsInput = document.getElementById("servings-wanted");
-  const servingsWanted = Number(servingsInput.value);
-  renderRecipe(exampleRecipe, servingsWanted);
+// Chunk 6: the editor (region 2).
+//
+// This is the one surface a recipe gets typed into. Both entry paths -
+// typing by hand now, pasting text in a later chunk - fill in these same
+// fields, so scaling never needs to know or care where a recipe came from.
+
+// Draws the whole editor from a recipe object: the name box, the "makes N
+// servings" box, and one row per ingredient. Called on page load and again
+// whenever a row is added or deleted - NOT on every keystroke. Redrawing an
+// input while the user is typing in it would replace that input with a
+// brand new DOM element and the cursor would jump out of it, so ordinary
+// editing is handled separately by handleEditorFieldChange below, which
+// only re-renders the output.
+function renderEditor(recipe) {
+  const nameInput = document.getElementById("recipe-name");
+  nameInput.value = recipe.name;
+
+  const servingsInput = document.getElementById("recipe-servings");
+  servingsInput.value = recipe.servings;
+
+  const rowsContainer = document.getElementById("ingredient-rows");
+  rowsContainer.replaceChildren();
+
+  for (let index = 0; index < recipe.ingredients.length; index++) {
+    const row = renderEditorRow(recipe.ingredients[index], index);
+    rowsContainer.appendChild(row);
+  }
 }
 
-const servingsInput = document.getElementById("servings-wanted");
-servingsInput.addEventListener("input", handleServingsInputChange);
+// Builds one editable ingredient row: amount, unit, name, and a delete
+// button. index is the row's position in the ingredients array at the time
+// it was drawn, which is what the delete button needs to remove the right
+// ingredient.
+function renderEditorRow(ingredient, index) {
+  const row = document.createElement("div");
+  row.className = "ingredient-row";
 
-// Draws the page for the first time, using whatever the input starts at.
-handleServingsInputChange();
+  const amountInput = document.createElement("input");
+  amountInput.type = "number";
+  amountInput.className = "amount-input";
+  // A blank amount is a real, meaningful value here ("Salt and pepper to
+  // taste" has none), so amount === null shows as an empty box rather than
+  // the input defaulting to "0".
+  if (ingredient.amount !== null) {
+    amountInput.value = ingredient.amount;
+  }
+  amountInput.addEventListener("input", handleEditorFieldChange);
+  row.appendChild(amountInput);
+
+  const unitInput = document.createElement("input");
+  unitInput.type = "text";
+  unitInput.className = "unit-input";
+  unitInput.value = ingredient.unit;
+  unitInput.addEventListener("input", handleEditorFieldChange);
+  row.appendChild(unitInput);
+
+  const nameInput = document.createElement("input");
+  nameInput.type = "text";
+  nameInput.className = "name-input";
+  nameInput.value = ingredient.name;
+  nameInput.addEventListener("input", handleEditorFieldChange);
+  row.appendChild(nameInput);
+
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.textContent = "×";
+  deleteButton.addEventListener("click", function () {
+    deleteRow(index);
+  });
+  row.appendChild(deleteButton);
+
+  return row;
+}
+
+// Reads every editor field back into a recipe object. This is the function
+// that makes the editor the source of truth: scaling and the output never
+// look at exampleRecipe once the page has loaded, only at whatever is
+// currently sitting in these boxes.
+function readEditorIntoRecipe() {
+  const name = document.getElementById("recipe-name").value;
+  const servings = Number(document.getElementById("recipe-servings").value);
+
+  const ingredients = [];
+  const rows = document.querySelectorAll("#ingredient-rows .ingredient-row");
+  for (const row of rows) {
+    ingredients.push(readEditorRow(row));
+  }
+
+  return { name: name, servings: servings, ingredients: ingredients };
+}
+
+// Reads one row's three inputs into an ingredient object. Split out of
+// readEditorIntoRecipe so that function stays a short loop.
+function readEditorRow(row) {
+  const amountInput = row.querySelector(".amount-input");
+  const unitInput = row.querySelector(".unit-input");
+  const nameInput = row.querySelector(".name-input");
+
+  // Number("") evaluates to 0, which would silently turn a blank amount box
+  // into a zero amount. Checking for an empty string first keeps a blank
+  // box meaning "no amount", matching exampleRecipe's use of null.
+  let amount = null;
+  if (amountInput.value.trim() !== "") {
+    amount = Number(amountInput.value);
+  }
+
+  return { amount: amount, unit: unitInput.value, name: nameInput.value };
+}
+
+// Appends one blank ingredient row and redraws the editor.
+function addEmptyRow() {
+  // Read the current fields first, so appending a blank row doesn't throw
+  // away edits already made to the other rows.
+  const recipe = readEditorIntoRecipe();
+  recipe.ingredients.push({ amount: null, unit: "", name: "" });
+  renderEditor(recipe);
+  handleEditorFieldChange();
+}
+
+// Removes the ingredient at the given position and redraws the editor.
+function deleteRow(index) {
+  const recipe = readEditorIntoRecipe();
+  // splice(index, 1) removes one item by its position in the array. Because
+  // renderEditor runs again right after, every remaining row is redrawn
+  // with a fresh index matching its new position - so a second delete on
+  // "row 1" removes whatever now sits at position 1, not the row that used
+  // to be there before the first delete.
+  recipe.ingredients.splice(index, 1);
+  renderEditor(recipe);
+  handleEditorFieldChange();
+}
+
+// Runs on every keystroke in any editor field (name, servings, or any
+// ingredient input) and on every change to the "cooking for" box. Reads the
+// editor, scales it, and redraws only the output in region 3 - the editor
+// itself is left alone so focus never jumps out of the field being typed
+// in.
+function handleEditorFieldChange() {
+  const servingsWantedInput = document.getElementById("servings-wanted");
+  const servingsWanted = Number(servingsWantedInput.value);
+  const recipe = readEditorIntoRecipe();
+  renderRecipe(recipe, servingsWanted);
+}
+
+// Pre-fills the editor with the starting recipe. From here on the editor's
+// own fields are what everything else reads from.
+renderEditor(exampleRecipe);
+
+// The name and "makes N servings" fields are fixed in index.html - renderEditor
+// only ever sets their .value, it never recreates them - so their listeners
+// only need to be attached once, here, rather than inside renderEditor.
+const recipeNameInput = document.getElementById("recipe-name");
+recipeNameInput.addEventListener("input", handleEditorFieldChange);
+
+const recipeServingsInput = document.getElementById("recipe-servings");
+recipeServingsInput.addEventListener("input", handleEditorFieldChange);
+
+const addIngredientButton = document.getElementById("add-ingredient-button");
+addIngredientButton.addEventListener("click", addEmptyRow);
+
+const servingsWantedInput = document.getElementById("servings-wanted");
+servingsWantedInput.addEventListener("input", handleEditorFieldChange);
+
+// Draws the output for the first time, using the pre-filled editor and
+// whatever the "cooking for" input starts at.
+handleEditorFieldChange();

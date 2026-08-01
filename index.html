@@ -15,6 +15,28 @@
     </header>
 
     <main>
+      <!-- Region 2: the editor. The single surface a user types a recipe into.
+           Pre-filled by script.js with exampleRecipe on page load. -->
+      <section id="editor">
+        <h2>Your Recipe</h2>
+
+        <div class="editor-field">
+          <label for="recipe-name">Recipe name</label>
+          <input type="text" id="recipe-name" />
+        </div>
+
+        <div class="editor-field">
+          <label for="recipe-servings">Makes</label>
+          <input type="number" id="recipe-servings" min="1" />
+          <span>servings</span>
+        </div>
+
+        <!-- Filled in by script.js with one row per ingredient -->
+        <div id="ingredient-rows"></div>
+
+        <button type="button" id="add-ingredient-button">+ Add ingredient</button>
+      </section>
+
       <div id="servings-control">
         <label for="servings-wanted">Cooking for</label>
         <input type="number" id="servings-wanted" value="4" min="1" />

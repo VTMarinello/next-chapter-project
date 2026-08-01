@@ -87,6 +87,13 @@ Chunks 6 and 7 are in that order deliberately: the parser's output lands in the 
 is where mis-parsed lines get corrected. Building the parser first would leave nowhere to fix its
 mistakes.
 
+**Build order changed 2026-07-31:** chunk 6 is being built *before* chunk 5. After chunk 4 the app
+had four chunks of working internal machinery and still no way for a user to enter a recipe — the
+visible app had fallen behind the logic. Chunk 5 is more invisible maths on a recipe you can't yet
+type in; chunk 6 is what makes the app usable by someone other than the author. Chunk numbers are
+kept as stable names rather than renumbered, so "chunk 5" still means the ladder everywhere in this
+document.
+
 **Status values:** not started → building → explained → committed
 
 ### The one genuinely interesting problem

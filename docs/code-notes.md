@@ -491,3 +491,134 @@ distance comparison used everywhere else.
    change elsewhere for the app to start correctly showing `⅛` on screen?
 3. `formatAmount` produces `½` for both `0.5` exactly and `0.5833`. Explain why that's not a bug in
    this chunk specifically, and what has to exist in chunk 5 to fix it.
+
+---
+
+## Chunk 6 — Add recipe editor
+
+**What it does for the user:**
+Below the header there's now a boxed section called "Your Recipe" with a name field, a "Makes ___
+servings" field, and a row for every ingredient — each row has a small amount box, a unit box, a name
+box, and a small × delete button. On page load the whole thing is already filled in with the pancake
+recipe from before, so the app doesn't open on an empty page. Below the ingredient rows is a "+ Add
+ingredient" button that appends a new blank row. For the first time, a user can actually change what
+recipe is on screen: type over "Pancakes" with a different name, edit any amount, delete a row, or add
+one — and the scaled output below updates instantly. Nothing is saved between visits yet (chunk 8),
+but for the length of one visit the app is finally usable by someone other than the person who
+hard-coded the pancake recipe.
+
+**How it works, step by step:**
+
+1. Page load runs `renderEditor(exampleRecipe)` near the bottom of the file. It writes `"Pancakes"`
+   into the name box, `4` into the servings box, and builds one row per ingredient inside
+   `#ingredient-rows`.
+2. Right after that, `handleEditorFieldChange()` runs once to draw the scaled output for the first
+   time, using whatever the editor now contains and whatever the "cooking for" box starts at.
+3. Type into any editor field and its `input` event fires `handleEditorFieldChange`. That function
+   calls `readEditorIntoRecipe()` to gather everything currently in the boxes into one recipe object,
+   then hands it to the same `renderRecipe` from chunk 3 to redraw the output. The editor itself is
+   not touched.
+4. Click "+ Add ingredient" and `addEmptyRow()` reads the current editor into a recipe object, pushes
+   one blank `{amount: null, unit: "", name: ""}` ingredient onto the end, then calls `renderEditor`
+   to redraw every row and `handleEditorFieldChange()` to refresh the output.
+5. Click a row's × and `deleteRow(index)` does the same pattern — read the editor, remove that one
+   ingredient with `splice`, redraw editor and output.
+
+**Each new function — in, what happens, out:**
+
+| Function | In | What it does | Out |
+|---|---|---|---|
+| `renderEditor(recipe)` | a recipe object | sets `.value` on the name/servings inputs, empties `#ingredient-rows`, builds and appends one row per ingredient | nothing — writes to the page |
+| `renderEditorRow(ingredient, index)` | one ingredient and its position | builds three `<input>` elements pre-filled with that ingredient's data, attaches an `input` listener to each, builds a delete button calling `deleteRow(index)` | one `<div class="ingredient-row">` |
+| `readEditorIntoRecipe()` | nothing (reads the live page) | reads the name and servings inputs, finds every `.ingredient-row` and calls `readEditorRow` on each | a fresh `{name, servings, ingredients}` object |
+| `readEditorRow(row)` | one row element | reads its three inputs; converts amount to a number unless the box is blank | one `{amount, unit, name}` object |
+| `addEmptyRow()` | nothing | reads editor, pushes a blank ingredient, redraws editor and output | nothing — side effects only |
+| `deleteRow(index)` | the row's position | reads editor, removes that ingredient with `splice`, redraws both | nothing — side effects only |
+| `handleEditorFieldChange()` | nothing | reads the wanted-servings box and the editor's recipe, scales, redraws only the output | nothing — side effects only |
+
+**The architectural idea that deserves emphasis — the editor is now the source of truth:**
+
+Up through chunk 4, `exampleRecipe` was what `renderRecipe` actually scaled and displayed every time —
+read directly, on every keystroke of the servings box. As of this chunk, `exampleRecipe` is touched
+exactly once, at the bottom of the file, to pre-fill the editor's boxes on first load. From that
+instant on, nothing else in the file looks at it again. Every scale, every redraw of the output, calls
+`readEditorIntoRecipe()` instead — building a brand-new recipe object out of whatever text is
+currently sitting in the boxes.
+
+This is what makes chunk 7 possible. The paste-and-parse feature will not need its own path into
+scaling. Its whole job will be to take pasted text and fill in these same editor boxes. Once that's
+done, a recipe that arrived by pasting and a recipe that arrived by typing are sitting in identical
+input boxes, read by the identical `readEditorIntoRecipe()` function. Scaling has no way to tell them
+apart, and doesn't need to. That is only possible because this chunk moved "what gets scaled" off a
+fixed JavaScript object and onto "whatever is in the editor right now."
+
+**The focus-loss problem and how it was avoided:**
+
+`renderEditor` doesn't just change the text inside the boxes — it deletes the old `<input>` elements
+with `replaceChildren()` and builds brand-new ones. If that ran on every keystroke, typing the second
+letter of an ingredient name would destroy the very input the cursor is sitting in and replace it with
+a new one that has no cursor at all. The browser would silently kick focus out of the field, and a
+user typing "flour" would end up with just "f" — every keystroke after the first landing nowhere.
+
+The code avoids this with two separate redraw paths. `renderEditor` — the expensive one that tears
+down and rebuilds every input — only runs when a row is added or deleted, because that genuinely does
+require new elements. Ordinary typing is caught by `handleEditorFieldChange`, which redraws *only* the
+output section below. The editor's own inputs are never touched, so the box being typed in, and its
+cursor position, stay exactly where they are.
+
+**Why blank amounts need an explicit check:**
+
+`Number("")` evaluates to `0` in JavaScript — an empty string converts to zero, not to "nothing." If
+`readEditorRow` just did `Number(amountInput.value)` unconditionally, leaving the amount box blank for
+a row like "Salt and pepper to taste" would silently produce `amount: 0`, and that `0` would then get
+multiplied along with every other amount — a phantom "0 tsp salt" in the output where nothing should
+scale at all. `readEditorRow` checks `amountInput.value.trim() !== ""` first: only if there's actual
+text does it convert. Otherwise `amount` stays `null`, matching the convention `exampleRecipe` already
+used, so a hand-typed blank and a hard-coded `null` behave identically everywhere downstream.
+
+**Worth knowing:**
+
+- **CONFIRMED BUG — clearing the "Makes N servings" box produces `Infinity`.** `readEditorIntoRecipe`
+  runs `Number(...)` on the servings box with no blank-check, unlike the amount field. Clear that box
+  and `servings` becomes `0`, so `calculateMultiplier(6, 0)` divides by zero and returns `Infinity`.
+  That flows through `scaleAmount` and `formatAmount` untouched, and the page displays
+  **"Infinity cups flour"**. Clearing both boxes gives `NaN` and displays **"NaN cups flour"**. This
+  was verified by loading the real `script.js` in Node against a stub DOM, not by reading the code.
+  Chunk 6 is what made it reachable: before this, `servings` always came from `exampleRecipe` and was
+  permanently `4`. It is the same *class* of gap chunk 3's notes already flagged for the "cooking for"
+  box (`min="1"` is cosmetic; nothing in the JS checks it), but with a worse symptom — `×0` at least
+  produced readable zeroes. Belongs in chunk 10.
+- **The two "blank box" code paths are not symmetric.** `readEditorRow` guards its amount field
+  against `Number("")`; `readEditorIntoRecipe` does not guard the servings field. That asymmetry is
+  exactly the bug above, and a good answer to "was there a bug you found reviewing your own code?"
+- **Deleting a row depends on a full redraw to keep row numbers honest.** Each delete button has a
+  fixed `index` baked in at draw time. If `renderEditor` didn't run again immediately after every
+  delete, a second delete click would remove whatever ingredient *used to* sit at that position. The
+  redraw re-numbers every button to match the array's real current order.
+- **The recipe still disappears on refresh.** No browser storage yet — reload and everything typed is
+  gone, replaced by the pancake example. Chunk 8.
+- **There's still no way to paste a recipe.** Every ingredient is typed by hand, one row at a time.
+  The parser is chunk 7 — not built.
+- **The layout is only barely styled.** Just enough spacing that boxes don't run together. No distinct
+  visual identity for the three regions, no phone stacking. Chunk 9.
+- **The scaling maths hasn't changed since chunk 4** — amounts still only snap to a simple fraction.
+  The cups→tbsp→tsp ladder (chunk 5) was deliberately postponed so the app would get a usable entry
+  point sooner.
+- **A real bug was found and fixed while building this:** the recipe-name and servings inputs
+  initially had no event listeners, because they're fixed elements in `index.html` rather than
+  elements `renderEditor` creates — so the listener code inside `renderEditorRow` never touched them.
+  The symptom: typing a new recipe name did nothing to the output, the heading kept reading
+  "Pancakes". Fixed by attaching two listeners once at startup, outside `renderEditor`.
+
+**Three questions an interviewer could ask:**
+
+1. `renderEditorRow` attaches an `input` listener to each box it creates, rather than `renderEditor`
+   attaching one listener to the whole `#ingredient-rows` container. What would happen if you deleted
+   the listener from inside `renderEditorRow` — and why does the recipe-name box need its listener
+   attached in a completely different place in the file?
+2. `readEditorRow` explicitly checks for a blank amount box before converting it to a number, but
+   `readEditorIntoRecipe` doesn't do the same for the servings box. Walk through exactly what appears
+   on screen if a user deletes everything in the "Makes ___ servings" box.
+3. `addEmptyRow` and `deleteRow` both start by calling `readEditorIntoRecipe()` before changing
+   anything. Why is that read necessary — what would go wrong if they started from `exampleRecipe`, or
+   from whatever recipe object was last rendered, instead of re-reading the live boxes?
