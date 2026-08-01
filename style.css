@@ -1,65 +1,64 @@
 /* ============================================================
    Recipe Scaler
    ------------------------------------------------------------
-   Design intent: a warm editorial kitchen tool.
+   The page is an application, not a document with inputs on it.
+   Three decisions carry that:
 
-   Four ideas drive the sheet:
-
-   1. The result is the product. It gets its own column, stays in
-      view while you edit, and carries the most weight on the page.
-   2. Chrome recedes. Inputs are filled rather than outlined, so
-      twenty boxes don't shout at once.
-   3. Colour means something. Terracotta is for the primary action
-      and the live result. Everything structural is warm neutral,
-      so the accent still registers when it appears.
-   4. The scale animation is CSS only. No animation library — see
-      the ANIMATION section at the bottom.
+   1. An app bar frames everything, so the page has a top edge
+      and an identity instead of starting straight into content.
+   2. The editor is a TABLE — header row, hairline rows, cells
+      that only look like inputs when you're in them. Earlier
+      versions were a wall of identical rounded pills, which is
+      what made it read as a form.
+   3. The result card is DARK, end to end. The animation used to
+      be a black strip bolted onto a white card, which looked
+      like a hole punched through it. Making the whole card dark
+      gives the scene somewhere to live, and makes the one thing
+      you actually read while cooking the clear focus.
    ============================================================ */
 
 :root {
-  /* --- Ink: warm near-black, never a cold grey --- */
-  --ink: #241b16;
-  --ink-2: #665750;
-  --ink-3: #9a8b81;
-
-  /* --- Surfaces --- */
-  --paper: #f7f2ec;
-  --surface: #ffffff;
+  /* --- Light side --- */
+  --ink: #211a15;
+  --ink-2: #6a5a50;
+  --ink-3: #9c8b7e;
+  --paper: #f4efe8;
+  --surface: #fffdfb;
   --fill: #f2ece4;
-  --fill-hover: #ece4da;
+  --hairline: #e7ddd1;
+  --hairline-2: #d8cbbb;
 
-  /* --- The dark panel the animation plays on --- */
-  --stage: #241b16;
-  --stage-2: #35271f;
-
-  /* --- Structure --- */
-  --hairline: #e8dfd4;
-  --hairline-2: #d9cdbf;
+  /* --- Dark side: the app bar and the result card --- */
+  --dark: #241c17;
+  --dark-2: #302620;
+  --dark-3: #3d3129;
+  --on-dark: #f6efe6;
+  --on-dark-2: #b8a99b;
+  --on-dark-3: #8a7a6c;
+  --dark-line: rgba(246, 239, 230, 0.1);
 
   /* --- Accent --- */
-  --accent: #b8452a;
-  --accent-deep: #93341e;
-  --accent-glow: #e0714f;
-  --accent-wash: #f9e8e2;
+  --accent: #c4512f;
+  --accent-2: #e0714f;
+  --accent-deep: #9c3d21;
+  --accent-wash: #f8e7e0;
+  --gold: #edc06a;
 
   /* --- Flag: a parser line needing a look. Amber, never red. --- */
   --flag: #bb8626;
   --flag-wash: #fdf5e6;
   --flag-ink: #77521a;
 
-  /* --- Type --- */
   --serif: "Iowan Old Style", Georgia, "Times New Roman", serif;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  /* --- Rhythm --- */
   --s1: 0.25rem;
   --s2: 0.5rem;
   --s3: 0.75rem;
   --s4: 1rem;
   --s5: 1.5rem;
   --s6: 2rem;
-  --s7: 3rem;
 
   --r: 10px;
   --r-lg: 16px;
@@ -73,70 +72,70 @@
 
 body {
   margin: 0;
-  padding: var(--s6) var(--s5) var(--s7);
   font-family: var(--sans);
   font-size: 1rem;
   line-height: 1.5;
   color: var(--ink);
-  /* Two very soft washes over the paper colour, so the background
-     has some depth instead of reading as one flat fill. */
-  background:
-    radial-gradient(900px 500px at 12% -10%, rgba(184, 69, 42, 0.07), transparent 60%),
-    radial-gradient(700px 400px at 92% 4%, rgba(187, 134, 38, 0.07), transparent 60%),
-    var(--paper);
-  background-attachment: fixed;
+  background: var(--paper);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
 
-/* ---------- Header ----------
-   Left aligned to the workspace. Centred headings over
-   left-aligned content is a common tell of a page that was styled
-   rather than designed. */
+/* ============================================================
+   APP BAR
+   ------------------------------------------------------------
+   A real top edge. Without this the page just began with a
+   heading floating on a background, which is the single biggest
+   reason it read as a document rather than an app.
+   ============================================================ */
 
-.page-header {
-  max-width: 68rem;
-  margin: 0 auto var(--s6);
+.appbar {
+  background: var(--dark);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
 }
 
-.eyebrow {
-  margin: 0 0 var(--s2);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent);
+.appbar-inner {
+  max-width: 70rem;
+  margin: 0 auto;
+  padding: var(--s3) var(--s5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s4);
+}
+
+.brand {
   display: flex;
   align-items: center;
   gap: var(--s2);
 }
 
-/* A short rule beside the eyebrow — a small piece of structure
-   that makes the header feel composed rather than stacked. */
-.eyebrow::after {
-  content: "";
-  flex: 1;
-  max-width: 5rem;
-  height: 1px;
-  background: linear-gradient(to right, var(--accent), transparent);
+/* A small solid mark. Any identity beats none — a bare wordmark
+   still reads as a page title, not a product. */
+.brand-mark {
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: linear-gradient(145deg, var(--accent-2), var(--accent-deep));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-h1 {
+.brand-name {
   font-family: var(--serif);
-  font-size: clamp(2.1rem, 5vw, 3rem);
+  font-size: 1.12rem;
   font-weight: 600;
-  letter-spacing: -0.025em;
-  line-height: 1.05;
-  color: var(--ink);
-  margin: 0 0 var(--s2);
+  letter-spacing: -0.01em;
+  color: var(--on-dark);
 }
 
-.lede {
+.appbar-note {
   margin: 0;
-  color: var(--ink-2);
-  font-size: 1.05rem;
-  max-width: 32rem;
+  font-size: 0.8rem;
+  color: var(--on-dark-3);
 }
 
 /* ============================================================
@@ -144,46 +143,101 @@ h1 {
    ============================================================ */
 
 .workspace {
-  max-width: 68rem;
+  max-width: 70rem;
   margin: 0 auto;
+  padding: var(--s5);
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 24rem;
+  grid-template-columns: minmax(0, 1fr) 23rem;
   gap: var(--s5);
   align-items: start;
 }
 
-.panel {
+.card {
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.card-editor {
   background: var(--surface);
   border: 1px solid var(--hairline);
-  border-radius: var(--r-lg);
-  padding: var(--s5);
-  box-shadow: 0 1px 2px rgba(36, 27, 22, 0.03),
-    0 12px 24px -18px rgba(36, 27, 22, 0.18);
+  box-shadow: 0 1px 2px rgba(33, 26, 21, 0.03),
+    0 16px 32px -24px rgba(33, 26, 21, 0.25);
 }
 
-.section-label {
-  font-family: var(--sans);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  margin: 0;
-}
-
-.panel-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s3);
-  margin-bottom: var(--s4);
-  padding-bottom: var(--s3);
+.card-head {
+  padding: var(--s4) var(--s5);
   border-bottom: 1px solid var(--hairline);
+  background: linear-gradient(180deg, var(--surface), var(--paper));
+}
+
+.card-title {
+  margin: 0;
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.card-sub {
+  margin: 0.1rem 0 0;
+  font-size: 0.83rem;
+  color: var(--ink-3);
+}
+
+.card-body {
+  padding: var(--s5);
 }
 
 /* ============================================================
-   FORM CONTROLS — filled, not outlined
+   EDITOR — meta fields
    ============================================================ */
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: var(--s4);
+  margin-bottom: var(--s5);
+}
+
+.meta-field label {
+  display: block;
+  margin-bottom: var(--s1);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.meta-field input {
+  width: 100%;
+}
+
+#recipe-name {
+  font-family: var(--serif);
+  font-size: 1.1rem;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+#recipe-servings {
+  width: 4rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.stepper-suffix {
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+/* ---------- Inputs ----------
+   Quiet by default: a soft fill and no border. They only come
+   forward when you're actually in one. */
 
 input[type="text"],
 input[type="number"],
@@ -199,16 +253,10 @@ textarea {
     box-shadow 0.14s ease;
 }
 
-input[type="text"]:hover,
-input[type="number"]:hover,
-textarea:hover {
-  background: var(--fill-hover);
-}
-
 input:focus,
 textarea:focus {
   outline: none;
-  background: var(--surface);
+  background: #fff;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-wash);
 }
@@ -219,173 +267,41 @@ textarea:focus {
 }
 
 /* ============================================================
-   BUTTONS — four weights, so intent reads at a glance
+   THE INGREDIENT TABLE
+   ------------------------------------------------------------
+   The fix for "a wall of pills". Rows are separated by hairlines
+   and the cells are transparent until hovered or focused, so the
+   block reads as a table of data rather than twenty controls.
    ============================================================ */
 
-button {
-  font-family: inherit;
-  font-size: 0.9rem;
-  font-weight: 600;
+.table {
+  border: 1px solid var(--hairline);
   border-radius: var(--r);
-  border: 1px solid transparent;
-  padding: 0.55rem 1rem;
-  cursor: pointer;
-  color: #fff;
-  background: linear-gradient(180deg, var(--accent-glow), var(--accent));
-  box-shadow: 0 1px 2px rgba(36, 27, 22, 0.12),
-    inset 0 1px 0 rgba(255, 255, 255, 0.18);
-  min-height: 42px;
-  transition: filter 0.14s ease, transform 0.08s ease, background 0.14s ease,
-    color 0.14s ease, border-color 0.14s ease;
+  overflow: hidden;
 }
-
-button:hover {
-  filter: brightness(0.94);
-}
-
-/* A press that moves. Small, but it makes the whole page feel
-   responsive rather than static. */
-button:active {
-  transform: translateY(1px);
-}
-
-button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--accent-wash);
-}
-
-.button-secondary {
-  background: transparent;
-  color: var(--ink-2);
-  border-color: var(--hairline-2);
-  box-shadow: none;
-}
-
-.button-secondary:hover {
-  background: var(--fill);
-  color: var(--ink);
-  filter: none;
-}
-
-.button-quiet {
-  background: transparent;
-  color: var(--accent);
-  border-color: transparent;
-  padding-inline: 0;
-  font-size: 0.88rem;
-  box-shadow: none;
-}
-
-.button-quiet:hover {
-  background: transparent;
-  filter: none;
-  color: var(--accent-deep);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.button-danger {
-  background: transparent;
-  color: var(--ink-3);
-  border-color: transparent;
-  font-weight: 500;
-  font-size: 0.82rem;
-  padding-inline: 0;
-  min-height: auto;
-  box-shadow: none;
-}
-
-.button-danger:hover {
-  background: transparent;
-  filter: none;
-  color: var(--accent);
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* ============================================================
-   EDITOR
-   ============================================================ */
-
-#review-notice {
-  margin: 0 0 var(--s4);
-  padding: var(--s3);
-  background: var(--flag-wash);
-  border-left: 3px solid var(--flag);
-  border-radius: 0 var(--r) var(--r) 0;
-  font-size: 0.88rem;
-  color: var(--flag-ink);
-}
-
-#review-notice:empty {
-  display: none;
-}
-
-.editor-field {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--s3);
-  margin-bottom: var(--s3);
-}
-
-.editor-field label {
-  flex: none;
-  width: 4rem;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-}
-
-#recipe-name {
-  flex: 1;
-  min-width: 10rem;
-  font-family: var(--serif);
-  font-size: 1.1rem;
-}
-
-#recipe-servings {
-  width: 4.5rem;
-}
-
-.field-suffix {
-  font-size: 0.88rem;
-  color: var(--ink-2);
-}
-
-.field-message {
-  font-size: 0.85rem;
-  color: var(--flag-ink);
-  flex-basis: 100%;
-  margin: 0;
-}
-
-.field-message:empty {
-  display: none;
-}
-
-/* ---------- Ingredient rows ----------
-   Five columns: a gutter for the flag, then amount / unit /
-   ingredient / delete. Each child is placed into an explicit
-   column rather than left to auto-flow, because script.js appends
-   the flag mark after the delete button — with auto-flow it would
-   land in a sixth cell and wrap onto its own line. */
 
 .ingredient-heads,
 .ingredient-row {
   display: grid;
-  grid-template-columns: 1rem 4.5rem 5rem minmax(0, 1fr) 1.75rem;
+  /* Five columns: a gutter for the flag mark, then amount / unit
+     / ingredient / delete. Every child is placed into an explicit
+     column rather than left to auto-flow, because script.js
+     appends the flag mark AFTER the delete button — with
+     auto-flow it would land in a sixth cell and wrap onto its own
+     line. Explicit placement makes the layout independent of the
+     order elements happen to be added in. */
+  grid-template-columns: 0.9rem 4.75rem 5rem minmax(0, 1fr) 2rem;
   gap: var(--s2);
   align-items: center;
 }
 
 .ingredient-heads {
-  margin: var(--s5) 0 var(--s2);
-  font-size: 0.66rem;
+  padding: var(--s2) var(--s3);
+  background: var(--paper);
+  border-bottom: 1px solid var(--hairline);
+  font-size: 0.64rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: var(--ink-3);
 }
@@ -395,8 +311,17 @@ button:focus-visible {
 .ingredient-heads span:nth-child(3) { grid-column: 4; }
 
 .ingredient-row {
-  padding: var(--s1) 0;
-  border-radius: var(--r);
+  padding: 0.3rem var(--s3);
+  border-bottom: 1px solid var(--hairline);
+  transition: background-color 0.12s ease;
+}
+
+.ingredient-row:last-child {
+  border-bottom: none;
+}
+
+.ingredient-row:hover {
+  background: var(--paper);
 }
 
 .ingredient-row .amount-input { grid-column: 2; }
@@ -405,15 +330,28 @@ button:focus-visible {
 .ingredient-row > button      { grid-column: 5; }
 .ingredient-row .unparsed-mark { grid-column: 1; grid-row: 1; }
 
+/* Cells: no fill at rest, so the table reads as rows of text. */
 .ingredient-row input {
   width: 100%;
+  background: transparent;
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
 }
 
-/* On a wide screen the column headings already label these fields,
-   so placeholders are redundant — and grey text in an
-   intentionally empty amount box (a "to taste" line) reads as an
-   unfilled required field, which looks like an error. Hidden here,
-   shown again on narrow screens where the headings are gone. */
+.ingredient-row input:hover {
+  background: var(--fill);
+}
+
+.ingredient-row .amount-input {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* On a wide screen the column headings already label these, and
+   grey text in an intentionally empty amount box (a "to taste"
+   line) reads as an unfilled required field — which looks like an
+   error. Hidden here, shown again on narrow screens where the
+   headings are gone. */
 @media (min-width: 761px) {
   .ingredient-row input::placeholder {
     color: transparent;
@@ -424,31 +362,35 @@ button:focus-visible {
   background: var(--flag-wash);
 }
 
+.unparsed-row:hover {
+  background: #fbf0dc;
+}
+
 .unparsed-mark {
   color: var(--flag);
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   text-align: center;
   cursor: default;
 }
 
-/* Delete stays faint until the row is hovered, so five ×'s don't
-   compete with the fields they sit beside. */
 .ingredient-row > button {
   background: none;
   color: var(--ink-3);
   border: none;
   box-shadow: none;
-  font-size: 1.05rem;
+  font-size: 1rem;
   line-height: 1;
   padding: 0;
-  min-height: 1.75rem;
-  height: 1.75rem;
-  width: 1.75rem;
+  min-height: 1.6rem;
+  height: 1.6rem;
+  width: 1.6rem;
   border-radius: 50%;
-  opacity: 0.3;
-  transition: opacity 0.14s ease, background-color 0.14s ease, color 0.14s ease;
+  opacity: 0;
+  transition: opacity 0.12s ease, background-color 0.12s ease, color 0.12s ease;
 }
 
+/* Delete only appears on the row you're pointing at, so five ×'s
+   don't sit there competing with the data. */
 .ingredient-row:hover > button,
 .ingredient-row > button:focus-visible {
   opacity: 1;
@@ -460,80 +402,193 @@ button:focus-visible {
   filter: none;
 }
 
-#add-ingredient-button {
+.table-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
   margin-top: var(--s3);
 }
 
-/* ---------- Paste drawer ---------- */
+/* ============================================================
+   BUTTONS
+   ============================================================ */
 
-.paste-drawer {
-  margin-top: var(--s5);
-  border-top: 1px solid var(--hairline);
-  padding-top: var(--s4);
+button {
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: var(--r);
+  border: 1px solid transparent;
+  padding: 0.55rem 1rem;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(180deg, var(--accent-2), var(--accent));
+  box-shadow: 0 1px 2px rgba(33, 26, 21, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  min-height: 40px;
+  transition: filter 0.14s ease, transform 0.08s ease, background 0.14s ease,
+    color 0.14s ease;
 }
 
-.paste-drawer > summary {
+button:hover {
+  filter: brightness(0.95);
+}
+
+button:active {
+  transform: translateY(1px);
+}
+
+button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-wash);
+}
+
+.button-secondary {
+  background: var(--fill);
+  color: var(--ink);
+  border-color: var(--hairline-2);
+  box-shadow: none;
+}
+
+.button-secondary:hover {
+  background: var(--hairline);
+  filter: none;
+}
+
+.button-quiet {
+  background: none;
+  color: var(--accent);
+  border-color: transparent;
+  padding-inline: 0;
+  font-size: 0.87rem;
+  box-shadow: none;
+  min-height: auto;
+}
+
+.button-quiet:hover {
+  background: none;
+  filter: none;
+  color: var(--accent-deep);
+}
+
+.button-danger {
+  background: none;
+  color: var(--ink-3);
+  border-color: transparent;
+  font-weight: 500;
+  font-size: 0.82rem;
+  padding-inline: 0;
+  min-height: auto;
+  box-shadow: none;
+}
+
+.button-danger:hover {
+  background: none;
+  filter: none;
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ============================================================
+   NOTICES
+   ============================================================ */
+
+#review-notice {
+  margin: 0 0 var(--s4);
+  padding: var(--s3);
+  background: var(--flag-wash);
+  border-left: 3px solid var(--flag);
+  border-radius: 0 var(--r) var(--r) 0;
+  font-size: 0.87rem;
+  color: var(--flag-ink);
+}
+
+#review-notice:empty {
+  display: none;
+}
+
+.field-message {
+  display: block;
+  margin: var(--s1) 0 0;
+  font-size: 0.82rem;
+  color: var(--flag-ink);
+}
+
+.field-message:empty {
+  display: none;
+}
+
+.field-message-dark {
+  color: var(--gold);
+  padding: 0 var(--s5) var(--s3);
+  margin: 0;
+}
+
+/* ============================================================
+   PASTE DRAWER
+   ============================================================ */
+
+.drawer {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--hairline);
+}
+
+.drawer > summary {
   cursor: pointer;
-  font-size: 0.88rem;
+  font-size: 0.87rem;
   font-weight: 600;
   color: var(--accent);
   list-style: none;
   display: flex;
   align-items: center;
   gap: var(--s2);
-  padding: var(--s1) 0;
 }
 
-.paste-drawer > summary::-webkit-details-marker {
+.drawer > summary::-webkit-details-marker {
   display: none;
 }
 
-.paste-drawer > summary::before {
-  content: "▸";
-  font-size: 0.8rem;
+.drawer-caret {
+  font-size: 0.72rem;
   transition: transform 0.16s ease;
 }
 
-.paste-drawer[open] > summary::before {
+.drawer[open] .drawer-caret {
   transform: rotate(90deg);
 }
 
-.paste-drawer-body {
+.drawer-body {
   padding-top: var(--s3);
 }
 
 .hint {
   margin: 0 0 var(--s3);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
   color: var(--ink-2);
 }
 
 #paste-textarea {
   display: block;
   width: 100%;
-  min-height: 8rem;
+  min-height: 7rem;
   resize: vertical;
   line-height: 1.55;
   font-family: var(--mono);
-  font-size: 0.85rem;
+  font-size: 0.84rem;
 }
 
-.paste-buttons {
+.drawer-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: var(--s2);
   margin-top: var(--s3);
 }
 
-.danger-zone {
-  margin-top: var(--s5);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--hairline);
-  text-align: right;
-}
-
 /* ============================================================
-   RESULT — the hero
+   RESULT CARD — dark, end to end
    ============================================================ */
 
 .column-result {
@@ -541,22 +596,19 @@ button:focus-visible {
   top: var(--s5);
 }
 
-.panel-result {
-  padding: 0;
-  overflow: hidden;
-  border-color: var(--hairline-2);
-  box-shadow: 0 2px 4px rgba(36, 27, 22, 0.05),
-    0 24px 48px -24px rgba(36, 27, 22, 0.3);
+.card-result {
+  background: var(--dark);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 6px rgba(33, 26, 21, 0.1),
+    0 28px 56px -28px rgba(33, 26, 21, 0.55);
 }
 
-/* ---------- The animated scene ---------- */
-
-.result-stage {
-  background: linear-gradient(165deg, var(--stage-2), var(--stage));
-  padding: var(--s3) var(--s3) 0;
-  /* The table legs run off the bottom edge rather than floating,
-     which sits the scene in the panel instead of on it. */
-  overflow: hidden;
+/* The animation lives on the same colour as the card around it,
+   so it reads as part of the object rather than a strip stuck to
+   it. A soft floor gradient sits the table on something. */
+.stage {
+  background: radial-gradient(120% 80% at 50% 100%, var(--dark-3), var(--dark) 70%);
+  border-bottom: 1px solid var(--dark-line);
 }
 
 .scene {
@@ -565,47 +617,57 @@ button:focus-visible {
   height: auto;
 }
 
-.scale-control {
+.scale-bar {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: var(--s2);
   padding: var(--s4) var(--s5);
-  background: var(--surface);
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--dark-line);
 }
 
-.scale-control label {
-  font-size: 0.7rem;
+.scale-bar label {
+  font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--on-dark-3);
 }
 
 #servings-wanted {
-  width: 4rem;
-  font-size: 1.1rem;
-  font-weight: 600;
+  width: 3.5rem;
   text-align: center;
-  background: var(--fill);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--on-dark);
+  background: var(--dark-2);
+  border-color: var(--dark-line);
+  font-variant-numeric: tabular-nums;
 }
 
-/* The one number on the page that earns the accent colour. */
+#servings-wanted:focus {
+  background: var(--dark-3);
+  color: var(--on-dark);
+  border-color: var(--accent-2);
+  box-shadow: 0 0 0 3px rgba(224, 113, 79, 0.22);
+}
+
+.scale-suffix {
+  font-size: 0.85rem;
+  color: var(--on-dark-2);
+}
+
+/* The one number that earns a colour of its own. */
 #multiplier-display {
   margin-left: auto;
   font-family: var(--serif);
-  font-size: 1.15rem;
+  font-size: 1.2rem;
   font-weight: 600;
-  color: var(--accent);
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
 }
 
 #multiplier-display:empty {
   display: none;
-}
-
-#servings-wanted-message {
-  padding: 0 var(--s5) var(--s3);
 }
 
 .scale-action {
@@ -615,29 +677,31 @@ button:focus-visible {
 #scale-button {
   width: 100%;
   font-size: 0.95rem;
-  letter-spacing: 0.02em;
+  min-height: 44px;
 }
+
+/* ---------- The scaled recipe ---------- */
 
 #recipe {
   padding: var(--s5);
 }
 
 #recipe h2 {
+  margin: 0 0 var(--s1);
   font-family: var(--serif);
-  font-size: 1.55rem;
+  font-size: 1.5rem;
   font-weight: 600;
   letter-spacing: -0.015em;
-  color: var(--ink);
-  margin: 0 0 var(--s1);
+  color: var(--on-dark);
 }
 
 #recipe > p {
   margin: 0 0 var(--s4);
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--ink-3);
+  color: var(--on-dark-3);
 }
 
 #recipe ul {
@@ -646,17 +710,15 @@ button:focus-visible {
   padding: 0;
 }
 
-/* Quantity in its own fixed column so every amount lines up down a
-   straight edge — the numbers are what you scan for mid-cook. No
-   boxes, no borders: you read this, you don't fill it in. */
-
+/* Quantity in its own fixed column, so every amount lines up down
+   a straight edge — the numbers are what you scan for mid-cook. */
 #recipe li {
   display: grid;
-  grid-template-columns: 6.5rem minmax(0, 1fr);
+  grid-template-columns: 6rem minmax(0, 1fr);
   gap: var(--s3);
   align-items: baseline;
-  padding: var(--s3) 0;
-  border-bottom: 1px solid var(--hairline);
+  padding: 0.65rem 0;
+  border-bottom: 1px solid var(--dark-line);
 }
 
 #recipe li:last-child {
@@ -666,62 +728,57 @@ button:focus-visible {
 
 #recipe .qty {
   font-weight: 700;
-  font-size: 1.02rem;
-  color: var(--ink);
-  /* Even-width digits, so numbers in adjacent rows stack. */
+  font-size: 1rem;
+  color: var(--gold);
   font-variant-numeric: tabular-nums;
 }
 
 #recipe .qty:empty::before {
-  /* Keeps the column from collapsing on lines with nothing to
-     measure, so the ingredient names stay aligned. */
   content: "—";
-  color: var(--ink-3);
+  color: var(--on-dark-3);
 }
 
 #recipe .ing {
-  font-size: 1rem;
-  color: var(--ink-2);
+  font-size: 0.98rem;
+  color: var(--on-dark);
 }
 
 .not-scaled-note {
   display: block;
-  font-size: 0.66rem;
+  margin-top: 0.1rem;
+  font-size: 0.62rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--ink-3);
-  margin-top: 0.15rem;
+  color: var(--on-dark-3);
 }
 
 .empty-state-message {
   margin: 0;
   padding: var(--s6) var(--s4);
-  color: var(--ink-3);
+  color: var(--on-dark-3);
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.88rem;
 }
 
 /* ============================================================
    ANIMATION
    ------------------------------------------------------------
    Plain CSS keyframes, no animation library. script.js adds the
-   class .is-scaling to #scale-output and takes it off again about
-   1.8s later; everything below hangs off that one class.
+   class .is-scaling to #scale-output and removes it ~1.8s later;
+   everything below hangs off that one class.
 
-   Each animated element carries a --i (its position in the
-   stagger) set in the markup. CSS can't count elements itself, so
-   the number is multiplied by a step here to work out that
-   element's delay.
-
-   Resting state comes first: apples and sparkles are invisible
-   until the button is pressed, and the spoon sits raised.
+   Each animated element carries a --i (its place in the stagger)
+   set in the markup. CSS can't count elements itself, so the
+   number is multiplied by a step here to get that element's
+   delay. The values are shuffled rather than sequential, so the
+   table fills in unevenly instead of sweeping left to right.
    ============================================================ */
 
 /* transform-box: fill-box makes percentage transform-origins
    resolve against the element's own box rather than the whole SVG
-   canvas, which is what lets each apple scale about its own
-   centre instead of flying in from the corner. */
+   canvas — that's what lets each apple scale about its own centre
+   instead of flying in from the corner. */
 .pop,
 .sparkle,
 .stir {
@@ -740,91 +797,40 @@ button:focus-visible {
   transform: rotate(25deg);
 }
 
-/* One apple springing onto the table. The overshoot past 1 is
-   what gives it weight — it lands, rather than simply appearing. */
+/* An apple springing onto the table. The overshoot past 1 is what
+   gives it weight — it lands, rather than simply appearing. */
 @keyframes apple-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.18);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
+  0%   { opacity: 0; transform: scale(0); }
+  60%  { opacity: 1; transform: scale(1.18); }
+  100% { opacity: 1; transform: scale(1); }
 }
 
 /* A sparkle flashing on and straight back off, turning a quarter
    turn as it goes. */
 @keyframes sparkle-flash {
-  0% {
-    opacity: 0;
-    transform: scale(0) rotate(0deg);
-  }
-  45% {
-    opacity: 1;
-    transform: scale(1.3) rotate(60deg);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(0) rotate(90deg);
-  }
+  0%   { opacity: 0; transform: scale(0) rotate(0deg); }
+  45%  { opacity: 1; transform: scale(1.3) rotate(60deg); }
+  100% { opacity: 0; transform: scale(0) rotate(90deg); }
 }
 
 /* The spoon sweeping down across the table and settling. */
 @keyframes spoon-stir {
-  0% {
-    transform: rotate(25deg);
-  }
-  35% {
-    transform: rotate(-20deg);
-  }
-  70% {
-    transform: rotate(-4deg);
-  }
-  100% {
-    transform: rotate(-10deg);
-  }
+  0%   { transform: rotate(25deg); }
+  35%  { transform: rotate(-20deg); }
+  70%  { transform: rotate(-4deg); }
+  100% { transform: rotate(-10deg); }
 }
 
 /* Each ingredient line dealt in from slightly below. */
 @keyframes row-deal {
-  0% {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
 }
 
-/* A single pulse of light around the panel as it lands. */
-@keyframes panel-flash {
-  0% {
-    box-shadow: 0 2px 4px rgba(36, 27, 22, 0.05),
-      0 24px 48px -24px rgba(36, 27, 22, 0.3),
-      0 0 0 0 rgba(184, 69, 42, 0.35);
-  }
-  40% {
-    box-shadow: 0 2px 4px rgba(36, 27, 22, 0.05),
-      0 24px 48px -24px rgba(36, 27, 22, 0.3),
-      0 0 0 8px rgba(184, 69, 42, 0);
-  }
-  100% {
-    box-shadow: 0 2px 4px rgba(36, 27, 22, 0.05),
-      0 24px 48px -24px rgba(36, 27, 22, 0.3),
-      0 0 0 0 rgba(184, 69, 42, 0);
-  }
-}
-
-/* ---------- What runs when the button is pressed ---------- */
-
-.is-scaling {
-  animation: panel-flash 0.9s ease-out;
+@keyframes gold-pulse {
+  0%   { color: var(--gold); }
+  30%  { color: #fff3d9; }
+  100% { color: var(--gold); }
 }
 
 .is-scaling .stir {
@@ -847,6 +853,10 @@ button:focus-visible {
   animation-delay: calc(0.5s + var(--i) * 0.06s);
 }
 
+.is-scaling #multiplier-display {
+  animation: gold-pulse 0.8s ease-out;
+}
+
 /* ---------- Respecting a system preference ----------
    Some people get motion sick, and every operating system has a
    "reduce motion" setting for exactly that. Honouring it costs
@@ -857,7 +867,7 @@ button:focus-visible {
   .is-scaling .pop,
   .is-scaling .sparkle,
   .is-scaling #recipe li,
-  .is-scaling {
+  .is-scaling #multiplier-display {
     animation: none;
   }
 
@@ -888,29 +898,37 @@ button:focus-visible {
 }
 
 @media (max-width: 760px) {
-  body {
-    padding: var(--s5) var(--s4) var(--s6);
+  .appbar-inner {
+    padding: var(--s3) var(--s4);
   }
 
-  .panel {
+  /* The tagline is the first thing to go when width is tight. */
+  .appbar-note {
+    display: none;
+  }
+
+  .workspace {
     padding: var(--s4);
-    border-radius: var(--r);
+    gap: var(--s4);
   }
 
-  .panel-result {
-    padding: 0;
-  }
-
-  .scale-control,
+  .card-head,
+  .card-body,
+  .scale-bar,
   #recipe,
   .scale-action {
     padding-left: var(--s4);
     padding-right: var(--s4);
   }
 
-  #servings-wanted-message {
+  .field-message-dark {
     padding-left: var(--s4);
     padding-right: var(--s4);
+  }
+
+  .meta-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--s3);
   }
 
   /* Column headings can't label fields that are no longer in
@@ -919,8 +937,12 @@ button:focus-visible {
     display: none;
   }
 
+  .table {
+    border: none;
+  }
+
   .ingredient-row {
-    grid-template-columns: 1fr 1fr 1.75rem;
+    grid-template-columns: 1fr 1fr 2rem;
     grid-template-areas:
       "amount unit delete"
       "name   name delete";
@@ -928,6 +950,12 @@ button:focus-visible {
     padding: var(--s3);
     margin-bottom: var(--s2);
     background: var(--paper);
+    border: 1px solid var(--hairline);
+    border-radius: var(--r);
+  }
+
+  .ingredient-row input {
+    background: var(--surface);
   }
 
   .ingredient-row .amount-input { grid-area: amount; }
@@ -947,11 +975,7 @@ button:focus-visible {
     text-align: left;
   }
 
-  .editor-field label {
-    width: 100%;
-  }
-
   #recipe li {
-    grid-template-columns: 5.5rem minmax(0, 1fr);
+    grid-template-columns: 5.25rem minmax(0, 1fr);
   }
 }
