@@ -895,3 +895,15 @@ but havent we also not put in the section it said we need about what we would ad
 ### 2026-07-31 23:23:00
 
 1   │ Countable ranges round to whole numbers — 3½-5¼ cloves is silly --- that currently occurs? it shouldnt. thata not worth leaving. I think the error notice if a save failsis worht putting in too. this section should be more simple to me not all stuff you made up. like having a print function to print saved recipesi think is a reasonable and useful feature, and coming up with maybe more robust logic about some edge cases makes sense. scale by what is on hand iant bad either if implementedin a intuitivw way. those three mentioned are more than enough.
+
+---
+
+### 2026-07-31 23:27:22
+
+ If we say that the full plan lives in plan.MD then can you add a section to it it's like actually never mind. You wouldn't add it to the plan file would you? It's basically like we went through and added some additional features that were outside the plan and I guess we didn't really make a mark down file for those I would like that to be noted somewhere that that occurred but I wouldn't know where to put it unless it's already represented in somewhere? Can you tell me if it is?
+
+---
+
+### 2026-07-31 23:29:55
+
+ Also the link forward from now any prompts that occur after this don't need to be in the prompt log, in fact, they shouldn't be on the project if I have more questions about the project in year, I don't want them placed on the prompt log anymore. Plan MDX so it doesn't happen because it wasn't in the original plan and maybe we should've made a new mark on file for these features but I was kind of coming up with them on the floor. You can mention in the read me that there's a log wrong or a prompt history file if you want? But it's more of a passing man than anything else after the plan section is fine. I would have that and yes, of course fix the specialist issue should only have the three much earlier when you made that change I assumed you would've gone back and taken away with the statements and they were no longer anytime you make changes like this. You need to obviously check for contradicts statements that are from our previous submissions of this, and you need to correct them to reflect the new truth.

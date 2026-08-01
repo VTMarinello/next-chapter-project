@@ -1,15 +1,3 @@
 {
-  "hooks": {
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "jq -r '\"\\n---\\n\\n### \" + (now | strflocaltime(\"%Y-%m-%d %H:%M:%S\")) + \"\\n\\n\" + .prompt' >> /Users/squirt/SquirtCode/NextChapterProject/prompt-log-raw.md 2>/dev/null || true",
-            "statusMessage": "Logging prompt"
-          }
-        ]
-      }
-    ]
-  }
+  "_comment": "The UserPromptSubmit hook that appended every prompt to prompt-log-raw.md was removed on 2026-07-31, once the project was finished and submitted. The log it produced is complete up to that point, and prompt-history.md is curated from it. Questions asked about the project after submission aren't part of the deliverable and shouldn't be added to it."
 }

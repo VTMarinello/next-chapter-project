@@ -362,8 +362,11 @@ editing what it was given.
 - **`min="1"` on the input is decorative.** HTML5 min/max validation only kicks in on form
   submission, and there is no `<form>` here. It does not stop the `input` event firing with `0`, a
   negative number, or an empty string.
-- **Fractional servings are possible and unguarded.** The input has no `step="1"`, so a user can type
-  `4.5` and get a multiplier of `1.125`. Lands in chunk 10 with the rest of input validation.
+- **Fractional servings were possible and unguarded** when this chunk was written: the input had no
+  `step="1"`, so `4.5` gave a multiplier of `1.125`. *Fixed after the plan* — both servings boxes now
+  reject anything but digits at the keyboard, because `type="number"` accepts `e`, `+`, `-` and `.`
+  as valid number characters and reports `.value` as empty when the contents are invalid, so there
+  is nothing left to strip out afterwards.
 
 **Three questions an interviewer could ask:**
 
@@ -795,8 +798,12 @@ lines. Check the marked one."
   consistent across every place a `(` could plausibly appear.
 - **`Juice of 1 lemon` is a real limitation, not a bug** — the parser only looks for a number at the
   very start. Any quantity written mid-sentence is invisible and silently treated as unscalable.
-- **`amountTextToNumberMixed` splits on a single literal space**, not any run of whitespace. `"1  1/2"`
-  (two spaces) would misparse — a small fragility inherited from a simpler pattern.
+- **`amountTextToNumberMixed` split on a single literal space** rather than any run of whitespace, so
+  `"1  1/2"` (two spaces) produced `NaN` and displayed as "NaN cups flour". *Fixed after the plan* —
+  it splits on `/\s+/` now, and every route into a parsed amount passes through one guard that turns
+  anything non-finite into "no amount". A second variant of the same bug was found at the same time:
+  the dispatcher tested `text.includes(" ")`, so a **tab** between the whole number and the fraction
+  never reached the mixed-number path at all.
 - **The clipboard button fails silently.** If `readText()` is refused (realistic on a `file://` page),
   the `.catch()` just focuses the textarea — nothing tells the user *why* nothing pasted.
 - **`knownUnits` is a fixed list.** An unrecognised unit doesn't break anything — it folds into the
@@ -865,9 +872,15 @@ failures are guarded, one on each side:
 - **A failed save is completely invisible.** Both `catch` blocks are empty by design — reasonable so a
   storage hiccup never breaks typing, but someone typing a whole recipe in a browser where storage is
   disabled would see everything working and then lose it all on refresh, with no warning anywhere.
-- **Only one recipe is ever saved.** A single fixed key, no list to switch between — that's explicitly
-  a stretch goal in `PLAN.md`, not built. Pasting a new recipe overwrites the one slot.
-- **"Start over" has no confirmation.** One click irreversibly wipes what's saved, no "are you sure?".
+- **Only one recipe was saved by this chunk** — a single fixed key, no list to switch between.
+  *Built after the plan*: a separate saved-recipes page now keeps a named list under its own key, and
+  this autosave slot went back to being just the working copy. See "After the plan" in `PLAN.md`.
+- **A failed save used to be completely invisible.** Both `catch` blocks were empty, so someone
+  typing a whole recipe in a browser with storage disabled would see it working and lose everything
+  on refresh. *Fixed after the plan* — `saveRecipes` returns whether it succeeded, and a standing
+  notice appears in the editor when it didn't.
+- **"Start over" still has no confirmation.** One click irreversibly wipes what's saved. Deleting a
+  *saved* recipe does ask first; this doesn't.
 - **Saving happens on every keystroke, with no debounce.** Harmless at recipe size, but it writes to
   storage far more often than strictly necessary.
 
@@ -936,7 +949,9 @@ structural wrap in `index.html` around an existing, already-working element.
   defined in this pass mostly benefits desktop users, not the phone users the chunk is designed around.
 - **The 600px breakpoint is a single undocumented number.** A reasonable guess for "phone vs not," but
   nothing explains why 600 rather than 480 or 768, and there's no second breakpoint for a small tablet.
-- **"Start over" is styled identically to every other button.** Combined with chunk 8's lack of a
+- **"Start over" was styled identically to every other button** when this chunk was written.
+  *Fixed after the plan* — it's now quiet underlined text in its own row, visually separated from the
+  actions that don't destroy anything. Combined with chunk 8's lack of a
   confirmation dialog, a destructive irreversible action looks exactly like harmless ones such as
   "+ Add ingredient". Nothing visually signals that one of these erases data.
 - **This is the lowest-risk chunk of the five** — it touches no scaling, parsing, or storage logic, so

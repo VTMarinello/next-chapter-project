@@ -77,6 +77,29 @@ Improve layout
 
 No multi-paragraph bodies. One line is right for this project.
 
+## Keeping the documents true
+
+Whenever behaviour changes, the change is only half done until every earlier statement it
+contradicts has been corrected. `PLAN.md`, `docs/code-notes.md` and `README.md` all describe how
+the app works, and they were written at different times — a fix that makes one of them wrong makes
+the project *look* wrong to anyone reading it afterwards.
+
+So after any change to behaviour:
+
+1. Search the markdown files for claims about the thing that changed.
+2. Correct them to the new truth, rather than adding a new statement beside the old one.
+3. Where the old behaviour is worth remembering — a bug that was fixed, an approach that was
+   rejected — say so explicitly as history, not as current fact.
+
+A stale document is worse than a missing one: it is confidently wrong.
+
+## Prompt logging
+
+The `UserPromptSubmit` hook that appended every prompt to `prompt-log-raw.md` was **removed** once
+the project was finished. The raw log is complete up to submission and `prompt-history.md` is
+curated from it. Do not re-add the hook, and do not append later conversations to either file —
+questions asked about the project afterwards aren't part of the deliverable.
+
 ## Things worth capturing as they happen
 
 These map to interview questions and cannot be reconstructed later. Flag them to the user in the

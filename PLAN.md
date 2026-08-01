@@ -45,10 +45,13 @@ That alone proves the idea works. Everything after it is convenience.
 
 ## Stretch Features
 
-1. A list of saved recipes to switch between
-2. Quick ×2 / ÷2 buttons alongside the serving input
-3. Edit or delete a saved recipe
-4. A print-friendly view for the scaled recipe
+Status added after the build — see "After the plan" below.
+
+1. ☑ **Built.** A list of saved recipes to switch between
+2. ☐ Quick ×2 / ÷2 buttons alongside the serving input
+3. ◐ **Partly built.** Delete a saved recipe, yes. Renaming one in place, no — saving under the
+   same name overwrites, which covers editing but isn't the same thing
+4. ☐ A print-friendly view for the scaled recipe
 
 ## Explicitly not building
 
@@ -96,6 +99,42 @@ document.
 
 **Status values:** not started → building → explained → committed
 
+---
+
+## After the plan
+
+The ten chunks above were the plan, and they were all built and explained. What follows was built
+*afterwards*, mostly in response to looking at the finished thing and not liking it. None of it was
+planned in advance, which is why there are no chunk numbers, no `docs/code-notes.md` entries, and
+no "explained" ticks — the record of this work is the commit history.
+
+It's listed here so the plan doesn't quietly claim to be the whole story.
+
+| What | Why it happened |
+|---|---|
+| **Interface rebuilt as an app shell** | The first two styling passes produced something that read as a form on a page rather than an application. Rejected twice before landing on an app bar, a two-column workspace, and the result as a dark card |
+| **The editor became a table** | It had been twenty identical rounded input pills in a grid. Hairline rows with transparent cells read as data instead of controls |
+| **Paste promoted to Step 1** | It had been folded away *below* the editor it feeds. Pasting is the fast path and most people's first move, so it leads now |
+| **SVG scale animation** | An exercise more than a feature — artwork found online, positioned by trial and error. Sketched first with GSAP from a CDN, then rebuilt as plain CSS because `CLAUDE.md` rules out libraries |
+| **Saved recipes page** | Stretch feature #1, promoted. A separate `saved.html`, because a growing list of recipes on the main page would have crowded out the app |
+| **Bug fixes found by testing** | A battery of edge cases turned up several real failures — see the decisions below |
+
+### What the animation turned out to teach
+
+Worth recording because it's the one part of this work with a genuine engineering lesson in it.
+
+The animation was first written as CSS **keyframes**, which paint a fixed sequence and leave nothing
+behind. That works in one direction. Running it backwards meant filling the table inside the
+animation's own first frame before it could empty it, which looked like a glitch: one apple, then
+twelve, then one.
+
+Rewriting it as a CSS **transition** fixed it, and made the code smaller. A transition animates
+whatever *changed*, in whichever direction it changed — so which apples are on the table became
+state, and moving between two states *is* the animation. One rule covers both directions.
+
+The general shape of the lesson: **an animation that removes things needs those things to exist
+before it starts.** Making the graphic hold state rather than paint a picture is what allowed that.
+
 ### The one genuinely interesting problem
 
 Chunks 5 and 7 are where the real thinking is, and it's worth knowing that going in, because it's
@@ -130,7 +169,7 @@ kind of unit it uses.
 |---|---|---|
 | Imperial volume | cup, tbsp, tsp | Try a fraction; decompose down the ladder if the fraction isn't close enough |
 | Metric weight/volume | g, kg, ml, l | Round to sensible precision. `247.3g` → `247g`. No fractions — metric multiplies cleanly |
-| Countable | eggs, cloves, cans, sticks | Show the honest number, including `1⅓ eggs`. The cook decides whether to round |
+| Countable | eggs, cloves, cans, sticks | A single amount shows the honest number, including `1⅓ eggs` — the cook decides whether to round. A *range* rounds to whole numbers (`4-5 cloves`, not `3½-5¼`): a range is already an approximation, so fractions inside one add false precision. Range rounding was added after the plan |
 | None | "to taste", "a splash" | Pass through untouched — correct at any batch size |
 
 ### The ladder
@@ -217,34 +256,39 @@ thirteen.
 
 ## Page architecture and flow
 
-Three regions, top to bottom, in the order a person moves through them.
+Three regions, in the order a person moves through them. **This diagram was updated after the
+plan** — the regions and the flow are unchanged, but they were originally stacked in one column,
+and the rebuild put the result in a column of its own so it stays in view while the recipe beside
+it is edited.
 
 ```
-┌─ 1. ADD A RECIPE ─────────────────────────────┐
-│  [ paste your recipe here…              ]     │  ← textarea, click and paste
-│  [ Paste from clipboard ]  [ Read recipe ]    │
-│  ─────────────── or ───────────────            │
-│  [ + Enter ingredients manually ]              │
-└────────────────────────────────────────────────┘
-┌─ 2. CHECK IT OVER ────────────────────────────┐
-│  Read 12 of 13 lines. Check the marked one.   │  ← review notice
-│  Name  [ Pancakes          ]                  │
-│  Makes [ 4 ] servings                          │
-│                                                │
-│  amt   unit    ingredient              │       │
-│  [2  ] [cups] [ flour              ]  [×]     │  ← every row editable
-│  [1.5] [cups] [ milk               ]  [×]     │
-│  [   ] [    ] [ 1 (14 oz) can toms  ] [×] ⚠  │  ← unparsed, flagged
-│  [ + Add ingredient ]                          │
-└────────────────────────────────────────────────┘
-┌─ 3. SCALE IT ─────────────────────────────────┐
-│  Cooking for [ 6 ] people        (×1.5)        │
-│                                                │
-│  3 cups flour                                  │  ← clean, large, read-only
-│  2¼ cups milk                                  │
-│  1 (14 oz) can toms        (not scaled)        │
-└────────────────────────────────────────────────┘
+┌─ APP BAR ────────────────────────────────────────────────────────────┐
+│  ◆ Recipe Scaler                              [ Saved recipes (3) ]  │
+└──────────────────────────────────────────────────────────────────────┘
+
+┌─ 1. START WITH A RECIPE ──────────┐   ┌─ 3. SCALED RECIPE ──────────┐
+│  [ paste your recipe here…   ]    │   │   (the animated scene)      │
+│  [ Read recipe ] [ Paste from ]   │   │  🍎 on a table              │
+└───────────────────────────────────┘   ├─────────────────────────────┤
+                                        │  COOKING FOR [ 6 ]   ×1.5   │
+┌─ 2. CHECK IT OVER ────────────────┐   ├─────────────────────────────┤
+│  Read 12 of 13 lines.             │   │  [    Scale it    ]         │
+│  RECIPE [ Pancakes            ]   │   │  [   Save recipe  ]         │
+│  MAKES  [ 4 ] servings            │   ├─────────────────────────────┤
+│  ┌──────────────────────────────┐ │   │  Pancakes                   │
+│  │ AMOUNT  UNIT   INGREDIENT    │ │   │  ORIGINALLY SERVES 4        │
+│  │ 2       cups   flour      ×  │ │   │                             │
+│  │ 1.5     cups   milk       ×  │ │   │  3 cups     flour           │
+│  │ ⚠              1 (14 oz)… ×  │ │   │  2¼ cups    milk            │
+│  └──────────────────────────────┘ │   │  —          1 (14 oz)…      │
+│  + Add ingredient      Start over │   │             NOT SCALED      │
+└───────────────────────────────────┘   └─────────────────────────────┘
+                                          ↑ sticky: stays in view
+                                            while you edit
 ```
+
+Below 980px the two columns become one and the result stops being sticky, because on a short
+viewport a pinned panel would eat most of the screen.
 
 ### The one architectural rule
 
@@ -275,6 +319,10 @@ that didn't scale.
 ### UX rules for this flow
 
 - **Editing is inline.** No modals, no separate edit screen — click the field, change it.
+- **Manual entry has no separate entry point.** The plan sketched an "enter ingredients manually"
+  button beside the paste box; in the build, the editor is simply always there with the example
+  recipe already in it, and "+ Add ingredient" covers the rest. A button to reveal something that
+  is already on screen would have been noise.
 - **The scaled output is visually distinct from the editor**: bigger type, read-only, no input
   boxes. You're reading it at the counter, not filling it in.
 - **Unscalable lines carry a quiet note** (`not scaled`) in the output, so "salt to taste" doesn't
@@ -295,6 +343,12 @@ to focusing the textarea if the read is refused. **Do not build the button as th
 ---
 
 ## Function breakdown
+
+The functions the plan called for. **Several more were added after the plan** and aren't listed
+here — the saved-recipes storage (`loadSavedRecipes`, `saveCurrentRecipe`, `deleteSavedRecipe`),
+the animation controls (`presetScene`, `playScaleAnimation`, `applyAppleLevel`), the whole-number
+input filter (`restrictToWholeNumbers`), and the guards added after testing (`looksLikeARecipe`,
+`usableAmountOrNull`, `formatRange`). See "After the plan".
 
 Deliberately fine-grained — more functions than a working programmer would write, each small
 enough to explain out loud in a sentence. See the code style note in `CLAUDE.md`.
@@ -386,4 +440,11 @@ enough to explain out loud in a sentence. See the code style note in `CLAUDE.md`
 | 2026-07-31 | Form built before parser (chunk 6 before 7) | The parser's output lands in the form, and the form is where mis-parses get fixed. Parser first would leave nowhere to correct its mistakes. |
 | 2026-07-31 | Paste and manual entry converge on one editor | A pasted recipe is indistinguishable from a typed one by the time it reaches the editor. One surface to build and debug, one path into scaling, and it's what makes the parser safe to be wrong. |
 | 2026-07-31 | Review step between entry and scaling | Correcting a mis-parse is cheapest before scaling, and stating "read 12 of 13 lines" is more honest than silently succeeding. Informative, not blocking — the user can scale anyway. |
+| 2026-07-31 | *(after the plan)* CSS transitions over keyframes for the animation | Keyframes paint a fixed sequence and leave no state, so reversing meant conjuring the apples out of nowhere in frame one. A transition animates whatever changed in whichever direction — one rule, both directions, and the scene became reversible. |
+| 2026-07-31 | *(after the plan)* The scene is pre-set when the servings change | Even with transitions, pressing "Scale it" on a smaller number had to populate the table before it could clear it. Setting the starting state as soon as the number is typed means the press only runs the change. |
+| 2026-07-31 | *(after the plan)* Saved recipes store original amounts, not scaled ones | Storing the multiplied numbers would bake the scaling in, so reopening and re-scaling would compound on top of it — the same mistake `scaleIngredient` avoids by never mutating. The servings last used is stored alongside instead. |
+| 2026-07-31 | *(after the plan)* Countable ranges round to whole numbers | `3½-5¼ cloves` is arithmetically right and useless. A range is already an approximation, so fractions inside one add false precision. Single countable amounts still show honestly — there the number is the answer. |
+| 2026-07-31 | *(after the plan)* Failed saves are surfaced, not swallowed | The empty `catch` was worse than the problem it avoided: the app looked like it was working and lost everything on refresh. |
+| 2026-07-31 | *(after the plan)* Servings boxes reject non-digits at the keyboard | `type="number"` accepts `e`, `+`, `-` and `.`, and reports `.value` as empty when the contents are invalid — so there is nothing left to sanitise afterwards. The keystroke has to be refused before it lands. |
+| 2026-07-31 | *(after the plan)* Prompt logging turned off at submission | The `UserPromptSubmit` hook is removed. The raw log is complete up to submission; questions asked about the project afterwards aren't part of the deliverable. |
 | 2026-07-31 | Textarea primary, paste button secondary | `navigator.clipboard.readText()` needs permission and a secure context; it works on the HTTPS Pages URL but may fail over `file://`. The button is a convenience with a fallback, never the only way in. |
