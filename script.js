@@ -885,6 +885,10 @@ function updateScaledOutput() {
 // extra.
 function handleEditorFieldChange() {
   updateScaledOutput();
+
+  // Keep the scene showing the state the next "Scale it" will begin from,
+  // so pressing it never has to build that state in its own first frame.
+  presetScene(currentMultiplier());
   saveRecipes();
 }
 
@@ -1446,8 +1450,15 @@ const scaleAnimationMs = 1800;
 // half-played.
 let scaleAnimationTimer = null;
 
+// How many of the ten extra apples are currently on the table. This is
+// STATE, not something an animation paints and throws away — which is what
+// makes the scene reversible. See presetScene below.
+let applesOnTable = 0;
+
+const totalExtraApples = 10;
+
 // Works out which way the scene should run. Scaling up fills the table;
-// scaling down clears it back to the one apple you started with.
+// scaling down clears it back to the one apple that's always there.
 function scaleDirection(multiplier) {
   if (multiplier < 1) {
     return "down";
@@ -1456,24 +1467,104 @@ function scaleDirection(multiplier) {
   return "up";
 }
 
+// How many apples the table should hold BEFORE a scale of this size runs.
+// Scaling down has to start from a full table — that's the whole point of
+// the animation — so the table is filled ahead of time rather than being
+// conjured up in the first frame of the animation itself.
+function applesBefore(multiplier) {
+  if (multiplier < 1) {
+    return totalExtraApples;
+  }
+
+  return 0;
+}
+
+// And how many it should hold afterwards. The mirror of the above.
+function applesAfter(multiplier) {
+  if (multiplier < 1) {
+    return 0;
+  }
+
+  return totalExtraApples;
+}
+
+// Shows or hides each apple by toggling one class. Everything about how they
+// move lives in style.css — this only ever says which ones should be there.
+function applyAppleLevel(count) {
+  const apples = document.querySelectorAll("#cloned-items .pop");
+
+  for (let index = 0; index < apples.length; index++) {
+    apples[index].classList.toggle("on", index < count);
+  }
+
+  applesOnTable = count;
+}
+
+// Puts the table into a state with no movement at all. Adding .no-motion
+// switches the transitions off, so the apples change instantly rather than
+// sliding; reading offsetWidth in between forces that to take effect before
+// motion is allowed again.
+function setAppleLevelInstantly(count) {
+  const outputPanel = document.getElementById("scale-output");
+
+  outputPanel.classList.add("no-motion");
+  applyAppleLevel(count);
+  void outputPanel.offsetWidth;
+  outputPanel.classList.remove("no-motion");
+}
+
+// Called whenever the servings numbers change. Sets the table to the state
+// the next scale will START from, without animating.
+//
+// This is what fixes the flash on the way down. Without it, pressing "Scale
+// it" on a smaller number showed one apple, then all twelve appearing, then
+// twelve reducing to one — the animation had to populate the table before it
+// could empty it. Now the table is already full by the time the button is
+// pressed, so the press only has to run the reduction.
+function presetScene(multiplier) {
+  const wanted = applesBefore(multiplier);
+
+  if (wanted === applesOnTable) {
+    return;
+  }
+
+  setAppleLevelInstantly(wanted);
+}
+
+// Reads the two servings boxes and returns the multiplier between them.
+function currentMultiplier() {
+  const recipe = readEditorIntoRecipe();
+  const servingsWantedInput = document.getElementById("servings-wanted");
+  const servingsWanted = readServingsInput(servingsWantedInput.value);
+
+  return determineMultiplier(recipe.servings, servingsWanted);
+}
+
 function playScaleAnimation(multiplier) {
   const outputPanel = document.getElementById("scale-output");
+  const direction = scaleDirection(multiplier);
 
   if (scaleAnimationTimer !== null) {
     clearTimeout(scaleAnimationTimer);
   }
 
-  // Removing the class and adding it straight back does nothing on its own:
-  // the browser batches style changes, sees the class present both before and
-  // after, and concludes nothing changed — so the animation never restarts.
-  // Reading a layout property in between forces the removal to be applied
-  // first, which is what lets the animation start over from the beginning.
-  outputPanel.classList.remove("is-scaling", "scale-up", "scale-down");
+  outputPanel.classList.remove("is-scaling", "going-up", "going-down");
+
+  // Snap to the starting state first. Usually this changes nothing, because
+  // presetScene already got there when the number was typed — but pressing
+  // the button twice in a row needs it, or the second press would have
+  // nothing left to animate.
+  setAppleLevelInstantly(applesBefore(multiplier));
+
+  outputPanel.classList.add("is-scaling", "going-" + direction);
   void outputPanel.offsetWidth;
-  outputPanel.classList.add("is-scaling", "scale-" + scaleDirection(multiplier));
+
+  // Changing the class now moves the apples, because the transitions are
+  // back on.
+  applyAppleLevel(applesAfter(multiplier));
 
   scaleAnimationTimer = setTimeout(function () {
-    outputPanel.classList.remove("is-scaling", "scale-up", "scale-down");
+    outputPanel.classList.remove("is-scaling", "going-up", "going-down");
     scaleAnimationTimer = null;
   }, scaleAnimationMs);
 }
@@ -1481,15 +1572,7 @@ function playScaleAnimation(multiplier) {
 function handleScaleButton() {
   // Redraw first, so the rows the animation staggers in are the current ones.
   updateScaledOutput();
-
-  // Work out the multiplier the same way the output just did, so the scene
-  // runs in the direction the numbers actually moved.
-  const recipe = readEditorIntoRecipe();
-  const servingsWantedInput = document.getElementById("servings-wanted");
-  const servingsWanted = readServingsInput(servingsWantedInput.value);
-  const multiplier = determineMultiplier(recipe.servings, servingsWanted);
-
-  playScaleAnimation(multiplier);
+  playScaleAnimation(currentMultiplier());
 }
 
 // Pre-fills the editor with a saved recipe if this browser already has one,
